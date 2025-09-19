@@ -1,8 +1,18 @@
-const { Estudiante } = require('../models');
+const { Estudiante, Docente } = require('../models');
 
 // Crear un nuevo Estudiante
 const crearEstudiante = async (datos) => {
   const fechaActual = new Date();
+
+  // Verificar si el usuario ya está asociado con un Docente
+  const usuarioExistente = await Docente.findOne({
+    where: { idUsuario: datos.idUsuario },
+  });
+
+  if (usuarioExistente) {
+    throw new Error('Este usuario ya está asociado a un Docente. No puede ser Estudiante.');
+  }
+
   return await Estudiante.create({
     ...datos,
     fechaCreacion: fechaActual,

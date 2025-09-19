@@ -9,6 +9,22 @@ const dataSeederRoutes = require('./dataSeeder.routes');  // Importamos la ruta 
 const estudianteRoutes = require('./estudiante.routes'); // Rutas de Estudiante
 const eventoRoutes = require('./evento.routes'); // Rutas de Evento
 const estudianteEventoRoutes = require('./estudianteEvento.routes'); // Rutas de EstudianteEvento
+const docenteRoutes = require('./docente.routes'); // Rutas de Docente
+const grupoRoutes = require('./grupo.routes'); // Rutas de Grupo
+const semestreRoutes = require('./semestre.routes'); // Rutas de Semestre
+const materiaRoutes = require('./materia.routes'); // Rutas de Materia
+const grupoMateriaRoutes = require('./grupoMateria.routes'); // Rutas de GrupoMateria
+
+router.use('/grupo-materias', grupoMateriaRoutes); // 👉 /api/grupo-materias
+
+// Ruta para manejar Materias
+router.use('/materias', materiaRoutes); // 👉 /api/materias
+
+router.use('/semestres', semestreRoutes); // 👉 /api/semestres
+
+router.use('/grupos', grupoRoutes); // 👉 /api/grupos
+
+router.use('/docentes', docenteRoutes); // 👉 /api/docentes
 
 router.use('/estudiante-eventos', estudianteEventoRoutes); // 👉 /api/estudiante-eventos
 

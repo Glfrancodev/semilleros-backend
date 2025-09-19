@@ -6,6 +6,10 @@ const crearEstudiante = async (req, res, next) => {
     const nuevoEstudiante = await estudianteService.crearEstudiante(req.body);
     res.status(201).json(nuevoEstudiante);
   } catch (err) {
+    // Si hay un error relacionado con el usuario ya asociado, lo capturamos
+    if (err.message.includes('usuario ya está asociado a un Docente')) {
+      return res.status(400).json({ error: err.message });
+    }
     next(err);
   }
 };
