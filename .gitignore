@@ -1,0 +1,31 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Logs
+logs
+*.log
+*.log.*
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+# Environment variables
+.env
+
+# Coverage directory used by testing tools
+coverage/
+
+# build
+dist/
+build/
+
+# Temporary files
+.vscode/
+.idea/
+
+# NPM package & dependencies folder
+node_modules/
