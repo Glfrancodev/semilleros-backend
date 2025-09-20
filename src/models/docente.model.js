@@ -52,6 +52,15 @@ module.exports = (sequelize, DataTypes) => {
       onUpdate: 'CASCADE',
       onDelete: 'CASCADE',
     });
+
+    // Relación con DocenteProyecto
+    Docente.hasMany(models.DocenteProyecto, {
+      as: 'docentesProyecto',
+      foreignKey: { name: 'idDocente', allowNull: false },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
+    });
+
   };
 
   return Docente;
