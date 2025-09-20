@@ -1,16 +1,11 @@
 const { Permiso, Rol, RolPermiso } = require('../models');
 
-// Controlador para poblar los permisos
+// Seeder para permisos
 const seedPermisos = async (req, res, next) => {
   const permisos = req.body; // Esperamos una lista de permisos
-
   try {
-    // Crear los permisos en la base de datos
-    const permisosCreados = await Permiso.bulkCreate(permisos, {
-      returning: true,  // Para obtener los permisos creados con sus ids
-    });
+    const permisosCreados = await Permiso.bulkCreate(permisos, { returning: true });
 
-    // Asociar los permisos al rol "Administrador"
     const rolAdministrador = await Rol.findOne({ where: { nombre: 'Administrador' } });
 
     if (rolAdministrador) {
@@ -28,8 +23,28 @@ const seedPermisos = async (req, res, next) => {
   }
 };
 
-// Puedes agregar más métodos aquí para poblar otras entidades como Roles, Usuarios, etc.
+// Seeder para roles
+const seedRoles = async (req, res, next) => {
+  const roles = req.body; // Esperamos una lista de roles [{nombre: 'Admin'}, ...]
+  try {
+    const fechaActual = new Date();
+
+    const rolesCreados = await Rol.bulkCreate(
+      roles.map(r => ({
+        ...r,
+        fechaCreacion: fechaActual,
+        fechaActualizacion: fechaActual,
+      })),
+      { returning: true }
+    );
+
+    res.status(201).json({ message: 'Roles creados correctamente', rolesCreados });
+  } catch (err) {
+    next(err);
+  }
+};
 
 module.exports = {
   seedPermisos,
+  seedRoles
 };
