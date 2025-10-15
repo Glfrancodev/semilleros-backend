@@ -1,8 +1,8 @@
-const { Permiso, Rol, RolPermiso } = require('../models');
+const { Permiso, Rol, RolPermiso, Usuario } = require('../models');
 
 // Seeder para permisos
 const seedPermisos = async (req, res, next) => {
-  const permisos = req.body; // Esperamos una lista de permisos
+  const permisos = req.body;
   try {
     const permisosCreados = await Permiso.bulkCreate(permisos, { returning: true });
 
@@ -25,7 +25,7 @@ const seedPermisos = async (req, res, next) => {
 
 // Seeder para roles
 const seedRoles = async (req, res, next) => {
-  const roles = req.body; // Esperamos una lista de roles [{nombre: 'Admin'}, ...]
+  const roles = req.body;
   try {
     const fechaActual = new Date();
 
@@ -44,7 +44,29 @@ const seedRoles = async (req, res, next) => {
   }
 };
 
+// Seeder para usuarios
+const seedUsuarios = async (req, res, next) => {
+  const usuarios = req.body; // Esperamos una lista [{nombre, correo, contrasena, idRol}, ...]
+  try {
+    const fechaActual = new Date();
+
+    const usuariosCreados = await Usuario.bulkCreate(
+      usuarios.map(u => ({
+        ...u,
+        fechaCreacion: fechaActual,
+        fechaActualizacion: fechaActual,
+      })),
+      { returning: true }
+    );
+
+    res.status(201).json({ message: 'Usuarios creados correctamente', usuariosCreados });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   seedPermisos,
-  seedRoles
+  seedRoles,
+  seedUsuarios
 };

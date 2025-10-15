@@ -32,6 +32,17 @@ const obtenerUsuarioPorId = async (req, res, next) => {
   }
 };
 
+// Obtener perfil del usuario logeado
+const obtenerPerfil = async (req, res, next) => {
+  try {
+    const usuario = await usuarioService.obtenerUsuarioPorId(req.user.idUsuario);
+    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json(usuario);
+  } catch (err) {
+    next(err);
+  }
+};
+
 // Actualizar Usuario
 const actualizarUsuario = async (req, res, next) => {
   try {
@@ -68,6 +79,7 @@ module.exports = {
   crearUsuario,
   obtenerUsuarios,
   obtenerUsuarioPorId,
+  obtenerPerfil,
   actualizarUsuario,
   toggleEstadoUsuario,
   login,  // Agregado

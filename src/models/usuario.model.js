@@ -30,6 +30,18 @@ module.exports = (sequelize, DataTypes) => {
         unique: true,
         validate: { isEmail: true },
       },
+      instagram: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      linkedin: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      github: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       contrasena: {
         type: DataTypes.STRING(255),
         allowNull: false,
