@@ -10,23 +10,24 @@ const areaCategoriaController = {
       const { idArea, idCategoria } = req.body;
 
       if (!idArea || !idCategoria) {
-        return res.status(400).json({
-          error: "Los campos idArea e idCategoria son requeridos",
-        });
+        return res.validationError(
+          "Los campos idArea e idCategoria son requeridos"
+        );
       }
 
       const areaCategoria = await areaCategoriaService.crearAreaCategoria(
         req.body
       );
-
-      return res.status(201).json({
-        mensaje: "AreaCategoría creada exitosamente",
+      return res.success(
+        "AreaCategoría creada exitosamente",
         areaCategoria,
-      });
+        201
+      );
     } catch (error) {
       console.error("Error al crear área-categoría:", error);
-      return res.status(500).json({
-        error: error.message || "Error al crear la área-categoría",
+      return res.error("Error al crear la área-categoría", 500, {
+        code: "CREATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -38,16 +39,15 @@ const areaCategoriaController = {
   async obtenerAreaCategorias(req, res) {
     try {
       const areaCategorias = await areaCategoriaService.obtenerAreaCategorias();
-
-      return res.status(200).json({
-        mensaje: "AreaCategorías obtenidas exitosamente",
-        cantidad: areaCategorias.length,
-        areaCategorias,
+      return res.success("AreaCategorías obtenidas exitosamente", {
+        count: areaCategorias.length,
+        items: areaCategorias,
       });
     } catch (error) {
       console.error("Error al obtener áreas-categorías:", error);
-      return res.status(500).json({
-        error: error.message || "Error al obtener las áreas-categorías",
+      return res.error("Error al obtener las áreas-categorías", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -59,23 +59,19 @@ const areaCategoriaController = {
   async obtenerAreaCategoriaPorId(req, res) {
     try {
       const { idAreaCategoria } = req.params;
-
       const areaCategoria =
         await areaCategoriaService.obtenerAreaCategoriaPorId(idAreaCategoria);
-
-      return res.status(200).json({
-        mensaje: "AreaCategoría obtenida exitosamente",
-        areaCategoria,
-      });
+      return res.success("AreaCategoría obtenida exitosamente", areaCategoria);
     } catch (error) {
       console.error("Error al obtener área-categoría:", error);
 
       if (error.message === "AreaCategoría no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("AreaCategoría");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al obtener la área-categoría",
+      return res.error("Error al obtener la área-categoría", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -87,19 +83,17 @@ const areaCategoriaController = {
   async obtenerAreaCategoriasPorArea(req, res) {
     try {
       const { idArea } = req.params;
-
       const areaCategorias =
         await areaCategoriaService.obtenerAreaCategoriasPorArea(idArea);
-
-      return res.status(200).json({
-        mensaje: "AreaCategorías obtenidas exitosamente",
-        cantidad: areaCategorias.length,
-        areaCategorias,
+      return res.success("AreaCategorías obtenidas exitosamente", {
+        count: areaCategorias.length,
+        items: areaCategorias,
       });
     } catch (error) {
       console.error("Error al obtener áreas-categorías:", error);
-      return res.status(500).json({
-        error: error.message || "Error al obtener las áreas-categorías",
+      return res.error("Error al obtener las áreas-categorías", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -111,21 +105,19 @@ const areaCategoriaController = {
   async obtenerAreaCategoriasPorCategoria(req, res) {
     try {
       const { idCategoria } = req.params;
-
       const areaCategorias =
         await areaCategoriaService.obtenerAreaCategoriasPorCategoria(
           idCategoria
         );
-
-      return res.status(200).json({
-        mensaje: "AreaCategorías obtenidas exitosamente",
-        cantidad: areaCategorias.length,
-        areaCategorias,
+      return res.success("AreaCategorías obtenidas exitosamente", {
+        count: areaCategorias.length,
+        items: areaCategorias,
       });
     } catch (error) {
       console.error("Error al obtener áreas-categorías:", error);
-      return res.status(500).json({
-        error: error.message || "Error al obtener las áreas-categorías",
+      return res.error("Error al obtener las áreas-categorías", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -137,25 +129,24 @@ const areaCategoriaController = {
   async actualizarAreaCategoria(req, res) {
     try {
       const { idAreaCategoria } = req.params;
-
       const areaCategoria = await areaCategoriaService.actualizarAreaCategoria(
         idAreaCategoria,
         req.body
       );
-
-      return res.status(200).json({
-        mensaje: "AreaCategoría actualizada exitosamente",
-        areaCategoria,
-      });
+      return res.success(
+        "AreaCategoría actualizada exitosamente",
+        areaCategoria
+      );
     } catch (error) {
       console.error("Error al actualizar área-categoría:", error);
 
       if (error.message === "AreaCategoría no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("AreaCategoría");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al actualizar la área-categoría",
+      return res.error("Error al actualizar la área-categoría", 500, {
+        code: "UPDATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -167,21 +158,22 @@ const areaCategoriaController = {
   async eliminarAreaCategoria(req, res) {
     try {
       const { idAreaCategoria } = req.params;
-
       const resultado = await areaCategoriaService.eliminarAreaCategoria(
         idAreaCategoria
       );
-
-      return res.status(200).json(resultado);
+      return res.success("AreaCategoría eliminada exitosamente", {
+        idAreaCategoria,
+      });
     } catch (error) {
       console.error("Error al eliminar área-categoría:", error);
 
       if (error.message === "AreaCategoría no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("AreaCategoría");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al eliminar la área-categoría",
+      return res.error("Error al eliminar la área-categoría", 500, {
+        code: "DELETE_ERROR",
+        details: error.message,
       });
     }
   },

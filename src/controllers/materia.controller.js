@@ -1,12 +1,16 @@
-const materiaService = require('../services/materia.service');
+const materiaService = require("../services/materia.service");
 
 // Crear una nueva Materia
 const crearMateria = async (req, res, next) => {
   try {
     const nuevaMateria = await materiaService.crearMateria(req.body);
-    res.status(201).json(nuevaMateria);
+    return res.success("Materia creada exitosamente", nuevaMateria, 201);
   } catch (err) {
-    next(err);
+    console.error("Error al crear materia:", err);
+    return res.error("Error al crear la materia", 500, {
+      code: "CREATE_ERROR",
+      details: err.message,
+    });
   }
 };
 
@@ -14,9 +18,16 @@ const crearMateria = async (req, res, next) => {
 const obtenerMaterias = async (req, res, next) => {
   try {
     const materias = await materiaService.obtenerMaterias();
-    res.json(materias);
+    return res.success("Materias obtenidas exitosamente", {
+      count: materias.length,
+      items: materias,
+    });
   } catch (err) {
-    next(err);
+    console.error("Error al obtener materias:", err);
+    return res.error("Error al obtener las materias", 500, {
+      code: "FETCH_ERROR",
+      details: err.message,
+    });
   }
 };
 
@@ -24,21 +35,36 @@ const obtenerMaterias = async (req, res, next) => {
 const obtenerMateriaPorId = async (req, res, next) => {
   try {
     const materia = await materiaService.obtenerMateriaPorId(req.params.id);
-    if (!materia) return res.status(404).json({ error: 'Materia no encontrada' });
-    res.json(materia);
+    if (!materia) return res.notFound("Materia");
+    return res.success("Materia obtenida exitosamente", materia);
   } catch (err) {
-    next(err);
+    console.error("Error al obtener materia:", err);
+    return res.error("Error al obtener la materia", 500, {
+      code: "FETCH_ERROR",
+      details: err.message,
+    });
   }
 };
 
 // Actualizar una Materia
 const actualizarMateria = async (req, res, next) => {
   try {
-    const [actualizados] = await materiaService.actualizarMateria(req.params.id, req.body);
-    if (actualizados === 0) return res.status(404).json({ error: 'Materia no encontrada' });
-    res.json({ mensaje: 'Materia actualizada correctamente' });
+    const [actualizados] = await materiaService.actualizarMateria(
+      req.params.id,
+      req.body
+    );
+    if (actualizados === 0) return res.notFound("Materia");
+
+    const materiaActualizada = await materiaService.obtenerMateriaPorId(
+      req.params.id
+    );
+    return res.success("Materia actualizada exitosamente", materiaActualizada);
   } catch (err) {
-    next(err);
+    console.error("Error al actualizar materia:", err);
+    return res.error("Error al actualizar la materia", 500, {
+      code: "UPDATE_ERROR",
+      details: err.message,
+    });
   }
 };
 
@@ -46,10 +72,16 @@ const actualizarMateria = async (req, res, next) => {
 const eliminarMateria = async (req, res, next) => {
   try {
     const eliminados = await materiaService.eliminarMateria(req.params.id);
-    if (eliminados === 0) return res.status(404).json({ error: 'Materia no encontrada' });
-    res.json({ mensaje: 'Materia eliminada correctamente' });
+    if (eliminados === 0) return res.notFound("Materia");
+    return res.success("Materia eliminada exitosamente", {
+      idMateria: req.params.id,
+    });
   } catch (err) {
-    next(err);
+    console.error("Error al eliminar materia:", err);
+    return res.error("Error al eliminar la materia", 500, {
+      code: "DELETE_ERROR",
+      details: err.message,
+    });
   }
 };
 

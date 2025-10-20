@@ -1,4 +1,4 @@
-const tipoCalificacionService = require('../services/tipoCalificacion.service');
+const tipoCalificacionService = require("../services/tipoCalificacion.service");
 
 const tipoCalificacionController = {
   /**
@@ -10,19 +10,18 @@ const tipoCalificacionController = {
       const { nombre } = req.body;
 
       if (!nombre) {
-        return res.status(400).json({ error: 'El nombre es requerido' });
+        return res.validationError("El campo nombre es requerido");
       }
 
-      const tipo = await tipoCalificacionService.crearTipoCalificacion(req.body);
-
-      return res.status(201).json({
-        mensaje: 'Tipo de calificación creado exitosamente',
-        tipoCalificacion: tipo,
-      });
+      const tipo = await tipoCalificacionService.crearTipoCalificacion(
+        req.body
+      );
+      return res.success("Tipo de calificación creado exitosamente", tipo, 201);
     } catch (error) {
-      console.error('Error al crear tipo de calificación:', error);
-      return res.status(500).json({
-        error: error.message || 'Error al crear el tipo de calificación',
+      console.error("Error al crear tipo de calificación:", error);
+      return res.error("Error al crear el tipo de calificación", 500, {
+        code: "CREATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -34,16 +33,15 @@ const tipoCalificacionController = {
   async obtenerTiposCalificacion(req, res) {
     try {
       const tipos = await tipoCalificacionService.obtenerTiposCalificacion();
-
-      return res.status(200).json({
-        mensaje: 'Tipos de calificación obtenidos exitosamente',
-        cantidad: tipos.length,
-        tiposCalificacion: tipos,
+      return res.success("Tipos de calificación obtenidos exitosamente", {
+        count: tipos.length,
+        items: tipos,
       });
     } catch (error) {
-      console.error('Error al obtener tipos de calificación:', error);
-      return res.status(500).json({
-        error: error.message || 'Error al obtener los tipos de calificación',
+      console.error("Error al obtener tipos de calificación:", error);
+      return res.error("Error al obtener los tipos de calificación", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -55,24 +53,20 @@ const tipoCalificacionController = {
   async obtenerTipoCalificacionPorId(req, res) {
     try {
       const { idTipoCalificacion } = req.params;
-
       const tipo = await tipoCalificacionService.obtenerTipoCalificacionPorId(
         idTipoCalificacion
       );
-
-      return res.status(200).json({
-        mensaje: 'Tipo de calificación obtenido exitosamente',
-        tipoCalificacion: tipo,
-      });
+      return res.success("Tipo de calificación obtenido exitosamente", tipo);
     } catch (error) {
-      console.error('Error al obtener tipo de calificación:', error);
+      console.error("Error al obtener tipo de calificación:", error);
 
-      if (error.message === 'Tipo de calificación no encontrado') {
-        return res.status(404).json({ error: error.message });
+      if (error.message === "Tipo de calificación no encontrado") {
+        return res.notFound("Tipo de calificación");
       }
 
-      return res.status(500).json({
-        error: error.message || 'Error al obtener el tipo de calificación',
+      return res.error("Error al obtener el tipo de calificación", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -84,25 +78,21 @@ const tipoCalificacionController = {
   async actualizarTipoCalificacion(req, res) {
     try {
       const { idTipoCalificacion } = req.params;
-
       const tipo = await tipoCalificacionService.actualizarTipoCalificacion(
         idTipoCalificacion,
         req.body
       );
-
-      return res.status(200).json({
-        mensaje: 'Tipo de calificación actualizado exitosamente',
-        tipoCalificacion: tipo,
-      });
+      return res.success("Tipo de calificación actualizado exitosamente", tipo);
     } catch (error) {
-      console.error('Error al actualizar tipo de calificación:', error);
+      console.error("Error al actualizar tipo de calificación:", error);
 
-      if (error.message === 'Tipo de calificación no encontrado') {
-        return res.status(404).json({ error: error.message });
+      if (error.message === "Tipo de calificación no encontrado") {
+        return res.notFound("Tipo de calificación");
       }
 
-      return res.status(500).json({
-        error: error.message || 'Error al actualizar el tipo de calificación',
+      return res.error("Error al actualizar el tipo de calificación", 500, {
+        code: "UPDATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -114,21 +104,22 @@ const tipoCalificacionController = {
   async eliminarTipoCalificacion(req, res) {
     try {
       const { idTipoCalificacion } = req.params;
-
       const resultado = await tipoCalificacionService.eliminarTipoCalificacion(
         idTipoCalificacion
       );
-
-      return res.status(200).json(resultado);
+      return res.success("Tipo de calificación eliminado exitosamente", {
+        idTipoCalificacion,
+      });
     } catch (error) {
-      console.error('Error al eliminar tipo de calificación:', error);
+      console.error("Error al eliminar tipo de calificación:", error);
 
-      if (error.message === 'Tipo de calificación no encontrado') {
-        return res.status(404).json({ error: error.message });
+      if (error.message === "Tipo de calificación no encontrado") {
+        return res.notFound("Tipo de calificación");
       }
 
-      return res.status(500).json({
-        error: error.message || 'Error al eliminar el tipo de calificación',
+      return res.error("Error al eliminar el tipo de calificación", 500, {
+        code: "DELETE_ERROR",
+        details: error.message,
       });
     }
   },

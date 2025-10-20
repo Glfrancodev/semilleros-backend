@@ -1,4 +1,4 @@
-const revisionService = require('../services/revision.service');
+const revisionService = require("../services/revision.service");
 
 const revisionController = {
   /**
@@ -10,21 +10,18 @@ const revisionController = {
       const { nombre, descripcion, fechaLimite, idProyecto } = req.body;
 
       if (!nombre || !descripcion || !fechaLimite || !idProyecto) {
-        return res.status(400).json({
-          error: 'Los campos nombre, descripcion, fechaLimite e idProyecto son requeridos',
-        });
+        return res.validationError(
+          "Los campos nombre, descripcion, fechaLimite e idProyecto son requeridos"
+        );
       }
 
       const revision = await revisionService.crearRevision(req.body);
-
-      return res.status(201).json({
-        mensaje: 'Revisión creada exitosamente',
-        revision,
-      });
+      return res.success("Revisión creada exitosamente", revision, 201);
     } catch (error) {
-      console.error('Error al crear revisión:', error);
-      return res.status(500).json({
-        error: error.message || 'Error al crear la revisión',
+      console.error("Error al crear revisión:", error);
+      return res.error("Error al crear la revisión", 500, {
+        code: "CREATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -36,16 +33,15 @@ const revisionController = {
   async obtenerRevisiones(req, res) {
     try {
       const revisiones = await revisionService.obtenerRevisiones();
-
-      return res.status(200).json({
-        mensaje: 'Revisiones obtenidas exitosamente',
-        cantidad: revisiones.length,
-        revisiones,
+      return res.success("Revisiones obtenidas exitosamente", {
+        count: revisiones.length,
+        items: revisiones,
       });
     } catch (error) {
-      console.error('Error al obtener revisiones:', error);
-      return res.status(500).json({
-        error: error.message || 'Error al obtener las revisiones',
+      console.error("Error al obtener revisiones:", error);
+      return res.error("Error al obtener las revisiones", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -57,22 +53,18 @@ const revisionController = {
   async obtenerRevisionPorId(req, res) {
     try {
       const { idRevision } = req.params;
-
       const revision = await revisionService.obtenerRevisionPorId(idRevision);
-
-      return res.status(200).json({
-        mensaje: 'Revisión obtenida exitosamente',
-        revision,
-      });
+      return res.success("Revisión obtenida exitosamente", revision);
     } catch (error) {
-      console.error('Error al obtener revisión:', error);
+      console.error("Error al obtener revisión:", error);
 
-      if (error.message === 'Revisión no encontrada') {
-        return res.status(404).json({ error: error.message });
+      if (error.message === "Revisión no encontrada") {
+        return res.notFound("Revisión");
       }
 
-      return res.status(500).json({
-        error: error.message || 'Error al obtener la revisión',
+      return res.error("Error al obtener la revisión", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -84,18 +76,18 @@ const revisionController = {
   async obtenerRevisionesPorProyecto(req, res) {
     try {
       const { idProyecto } = req.params;
-
-      const revisiones = await revisionService.obtenerRevisionesPorProyecto(idProyecto);
-
-      return res.status(200).json({
-        mensaje: 'Revisiones obtenidas exitosamente',
-        cantidad: revisiones.length,
-        revisiones,
+      const revisiones = await revisionService.obtenerRevisionesPorProyecto(
+        idProyecto
+      );
+      return res.success("Revisiones obtenidas exitosamente", {
+        count: revisiones.length,
+        items: revisiones,
       });
     } catch (error) {
-      console.error('Error al obtener revisiones:', error);
-      return res.status(500).json({
-        error: error.message || 'Error al obtener las revisiones del proyecto',
+      console.error("Error al obtener revisiones:", error);
+      return res.error("Error al obtener las revisiones del proyecto", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -107,22 +99,21 @@ const revisionController = {
   async actualizarRevision(req, res) {
     try {
       const { idRevision } = req.params;
-
-      const revision = await revisionService.actualizarRevision(idRevision, req.body);
-
-      return res.status(200).json({
-        mensaje: 'Revisión actualizada exitosamente',
-        revision,
-      });
+      const revision = await revisionService.actualizarRevision(
+        idRevision,
+        req.body
+      );
+      return res.success("Revisión actualizada exitosamente", revision);
     } catch (error) {
-      console.error('Error al actualizar revisión:', error);
+      console.error("Error al actualizar revisión:", error);
 
-      if (error.message === 'Revisión no encontrada') {
-        return res.status(404).json({ error: error.message });
+      if (error.message === "Revisión no encontrada") {
+        return res.notFound("Revisión");
       }
 
-      return res.status(500).json({
-        error: error.message || 'Error al actualizar la revisión',
+      return res.error("Error al actualizar la revisión", 500, {
+        code: "UPDATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -134,19 +125,18 @@ const revisionController = {
   async eliminarRevision(req, res) {
     try {
       const { idRevision } = req.params;
-
       const resultado = await revisionService.eliminarRevision(idRevision);
-
-      return res.status(200).json(resultado);
+      return res.success("Revisión eliminada exitosamente", { idRevision });
     } catch (error) {
-      console.error('Error al eliminar revisión:', error);
+      console.error("Error al eliminar revisión:", error);
 
-      if (error.message === 'Revisión no encontrada') {
-        return res.status(404).json({ error: error.message });
+      if (error.message === "Revisión no encontrada") {
+        return res.notFound("Revisión");
       }
 
-      return res.status(500).json({
-        error: error.message || 'Error al eliminar la revisión',
+      return res.error("Error al eliminar la revisión", 500, {
+        code: "DELETE_ERROR",
+        details: error.message,
       });
     }
   },

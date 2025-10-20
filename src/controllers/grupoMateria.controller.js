@@ -1,12 +1,22 @@
-const grupoMateriaService = require('../services/grupoMateria.service');
+const grupoMateriaService = require("../services/grupoMateria.service");
 
 // Crear una nueva GrupoMateria
 const crearGrupoMateria = async (req, res, next) => {
   try {
-    const nuevoGrupoMateria = await grupoMateriaService.crearGrupoMateria(req.body);
-    res.status(201).json(nuevoGrupoMateria);
+    const nuevoGrupoMateria = await grupoMateriaService.crearGrupoMateria(
+      req.body
+    );
+    return res.success(
+      "GrupoMateria creado exitosamente",
+      nuevoGrupoMateria,
+      201
+    );
   } catch (err) {
-    next(err);
+    console.error("Error al crear GrupoMateria:", err);
+    return res.error("Error al crear el GrupoMateria", 500, {
+      code: "CREATE_ERROR",
+      details: err.message,
+    });
   }
 };
 
@@ -14,42 +24,76 @@ const crearGrupoMateria = async (req, res, next) => {
 const obtenerGrupoMaterias = async (req, res, next) => {
   try {
     const grupoMaterias = await grupoMateriaService.obtenerGrupoMaterias();
-    res.json(grupoMaterias);
+    return res.success("GrupoMaterias obtenidos exitosamente", {
+      count: grupoMaterias.length,
+      items: grupoMaterias,
+    });
   } catch (err) {
-    next(err);
+    console.error("Error al obtener GrupoMaterias:", err);
+    return res.error("Error al obtener los GrupoMaterias", 500, {
+      code: "FETCH_ERROR",
+      details: err.message,
+    });
   }
 };
 
 // Obtener un GrupoMateria por ID
 const obtenerGrupoMateriaPorId = async (req, res, next) => {
   try {
-    const grupoMateria = await grupoMateriaService.obtenerGrupoMateriaPorId(req.params.id);
-    if (!grupoMateria) return res.status(404).json({ error: 'GrupoMateria no encontrada' });
-    res.json(grupoMateria);
+    const grupoMateria = await grupoMateriaService.obtenerGrupoMateriaPorId(
+      req.params.id
+    );
+    if (!grupoMateria) return res.notFound("GrupoMateria");
+    return res.success("GrupoMateria obtenido exitosamente", grupoMateria);
   } catch (err) {
-    next(err);
+    console.error("Error al obtener GrupoMateria:", err);
+    return res.error("Error al obtener el GrupoMateria", 500, {
+      code: "FETCH_ERROR",
+      details: err.message,
+    });
   }
 };
 
 // Actualizar un GrupoMateria
 const actualizarGrupoMateria = async (req, res, next) => {
   try {
-    const [actualizados] = await grupoMateriaService.actualizarGrupoMateria(req.params.id, req.body);
-    if (actualizados === 0) return res.status(404).json({ error: 'GrupoMateria no encontrada' });
-    res.json({ mensaje: 'GrupoMateria actualizado correctamente' });
+    const [actualizados] = await grupoMateriaService.actualizarGrupoMateria(
+      req.params.id,
+      req.body
+    );
+    if (actualizados === 0) return res.notFound("GrupoMateria");
+
+    const grupoMateriaActualizado =
+      await grupoMateriaService.obtenerGrupoMateriaPorId(req.params.id);
+    return res.success(
+      "GrupoMateria actualizado exitosamente",
+      grupoMateriaActualizado
+    );
   } catch (err) {
-    next(err);
+    console.error("Error al actualizar GrupoMateria:", err);
+    return res.error("Error al actualizar el GrupoMateria", 500, {
+      code: "UPDATE_ERROR",
+      details: err.message,
+    });
   }
 };
 
 // Eliminar un GrupoMateria (Hard delete)
 const eliminarGrupoMateria = async (req, res, next) => {
   try {
-    const eliminados = await grupoMateriaService.eliminarGrupoMateria(req.params.id);
-    if (eliminados === 0) return res.status(404).json({ error: 'GrupoMateria no encontrada' });
-    res.json({ mensaje: 'GrupoMateria eliminada correctamente' });
+    const eliminados = await grupoMateriaService.eliminarGrupoMateria(
+      req.params.id
+    );
+    if (eliminados === 0) return res.notFound("GrupoMateria");
+    return res.success("GrupoMateria eliminado exitosamente", {
+      idGrupoMateria: req.params.id,
+    });
   } catch (err) {
-    next(err);
+    console.error("Error al eliminar GrupoMateria:", err);
+    return res.error("Error al eliminar el GrupoMateria", 500, {
+      code: "DELETE_ERROR",
+      details: err.message,
+    });
   }
 };
 

@@ -10,23 +10,21 @@ const convocatoriaController = {
       const { nombre, semestre, año } = req.body;
 
       if (!nombre || !semestre || !año) {
-        return res.status(400).json({
-          error: "Los campos nombre, semestre y año son requeridos",
-        });
+        return res.validationError(
+          "Los campos nombre, semestre y año son requeridos"
+        );
       }
 
       const convocatoria = await convocatoriaService.crearConvocatoria(
         req.body
       );
 
-      return res.status(201).json({
-        mensaje: "Convocatoria creada exitosamente",
-        convocatoria,
-      });
+      return res.success("Convocatoria creada exitosamente", convocatoria, 201);
     } catch (error) {
       console.error("Error al crear convocatoria:", error);
-      return res.status(500).json({
-        error: error.message || "Error al crear la convocatoria",
+      return res.error("Error al crear la convocatoria", 500, {
+        code: "CREATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -39,15 +37,15 @@ const convocatoriaController = {
     try {
       const convocatorias = await convocatoriaService.obtenerConvocatorias();
 
-      return res.status(200).json({
-        mensaje: "Convocatorias obtenidas exitosamente",
-        cantidad: convocatorias.length,
-        convocatorias,
+      return res.success("Convocatorias obtenidas exitosamente", {
+        count: convocatorias.length,
+        items: convocatorias,
       });
     } catch (error) {
       console.error("Error al obtener convocatorias:", error);
-      return res.status(500).json({
-        error: error.message || "Error al obtener las convocatorias",
+      return res.error("Error al obtener las convocatorias", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -64,19 +62,17 @@ const convocatoriaController = {
         idConvocatoria
       );
 
-      return res.status(200).json({
-        mensaje: "Convocatoria obtenida exitosamente",
-        convocatoria,
-      });
+      return res.success("Convocatoria obtenida exitosamente", convocatoria);
     } catch (error) {
       console.error("Error al obtener convocatoria:", error);
 
       if (error.message === "Convocatoria no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("Convocatoria");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al obtener la convocatoria",
+      return res.error("Error al obtener la convocatoria", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -94,19 +90,17 @@ const convocatoriaController = {
         req.body
       );
 
-      return res.status(200).json({
-        mensaje: "Convocatoria actualizada exitosamente",
-        convocatoria,
-      });
+      return res.success("Convocatoria actualizada exitosamente", convocatoria);
     } catch (error) {
       console.error("Error al actualizar convocatoria:", error);
 
       if (error.message === "Convocatoria no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("Convocatoria");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al actualizar la convocatoria",
+      return res.error("Error al actualizar la convocatoria", 500, {
+        code: "UPDATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -119,20 +113,19 @@ const convocatoriaController = {
     try {
       const { idConvocatoria } = req.params;
 
-      const resultado = await convocatoriaService.eliminarConvocatoria(
-        idConvocatoria
-      );
+      await convocatoriaService.eliminarConvocatoria(idConvocatoria);
 
-      return res.status(200).json(resultado);
+      return res.success("Convocatoria eliminada exitosamente", null);
     } catch (error) {
       console.error("Error al eliminar convocatoria:", error);
 
       if (error.message === "Convocatoria no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("Convocatoria");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al eliminar la convocatoria",
+      return res.error("Error al eliminar la convocatoria", 500, {
+        code: "DELETE_ERROR",
+        details: error.message,
       });
     }
   },

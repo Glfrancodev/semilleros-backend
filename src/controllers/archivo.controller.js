@@ -1,4 +1,4 @@
-const archivoService = require('../services/archivo.service');
+const archivoService = require("../services/archivo.service");
 
 const archivoController = {
   /**
@@ -10,27 +10,20 @@ const archivoController = {
       const { idProyecto } = req.body;
 
       if (!idProyecto) {
-        return res.status(400).json({ 
-          error: 'El idProyecto es requerido' 
-        });
+        return res.validationError("El idProyecto es requerido");
       }
 
       if (!req.file) {
-        return res.status(400).json({ 
-          error: 'No se ha proporcionado ningún archivo' 
-        });
+        return res.validationError("No se ha proporcionado ningún archivo");
       }
 
       const archivo = await archivoService.subirArchivo(req.file, idProyecto);
-
-      return res.status(201).json({
-        mensaje: 'Archivo subido exitosamente',
-        archivo,
-      });
+      return res.success("Archivo subido exitosamente", archivo, 201);
     } catch (error) {
-      console.error('Error al subir archivo:', error);
-      return res.status(500).json({ 
-        error: error.message || 'Error al subir el archivo' 
+      console.error("Error al subir archivo:", error);
+      return res.error("Error al subir el archivo", 500, {
+        code: "UPLOAD_ERROR",
+        details: error.message,
       });
     }
   },
@@ -44,22 +37,21 @@ const archivoController = {
       const { idProyecto } = req.params;
 
       if (!idProyecto) {
-        return res.status(400).json({ 
-          error: 'El idProyecto es requerido' 
-        });
+        return res.validationError("El idProyecto es requerido");
       }
 
-      const archivos = await archivoService.obtenerArchivosPorProyecto(idProyecto);
-
-      return res.status(200).json({
-        mensaje: 'Archivos obtenidos exitosamente',
-        cantidad: archivos.length,
-        archivos,
+      const archivos = await archivoService.obtenerArchivosPorProyecto(
+        idProyecto
+      );
+      return res.success("Archivos obtenidos exitosamente", {
+        count: archivos.length,
+        items: archivos,
       });
     } catch (error) {
-      console.error('Error al obtener archivos:', error);
-      return res.status(500).json({ 
-        error: error.message || 'Error al obtener los archivos' 
+      console.error("Error al obtener archivos:", error);
+      return res.error("Error al obtener los archivos", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -73,26 +65,21 @@ const archivoController = {
       const { idArchivo } = req.params;
 
       if (!idArchivo) {
-        return res.status(400).json({ 
-          error: 'El idArchivo es requerido' 
-        });
+        return res.validationError("El idArchivo es requerido");
       }
 
       const archivo = await archivoService.obtenerArchivoPorId(idArchivo);
-
-      return res.status(200).json({
-        mensaje: 'Archivo obtenido exitosamente',
-        archivo,
-      });
+      return res.success("Archivo obtenido exitosamente", archivo);
     } catch (error) {
-      console.error('Error al obtener archivo:', error);
-      
-      if (error.message === 'Archivo no encontrado') {
-        return res.status(404).json({ error: error.message });
+      console.error("Error al obtener archivo:", error);
+
+      if (error.message === "Archivo no encontrado") {
+        return res.notFound("Archivo");
       }
 
-      return res.status(500).json({ 
-        error: error.message || 'Error al obtener el archivo' 
+      return res.error("Error al obtener el archivo", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -106,23 +93,21 @@ const archivoController = {
       const { idArchivo } = req.params;
 
       if (!idArchivo) {
-        return res.status(400).json({ 
-          error: 'El idArchivo es requerido' 
-        });
+        return res.validationError("El idArchivo es requerido");
       }
 
       const resultado = await archivoService.eliminarArchivo(idArchivo);
-
-      return res.status(200).json(resultado);
+      return res.success("Archivo eliminado exitosamente", { idArchivo });
     } catch (error) {
-      console.error('Error al eliminar archivo:', error);
-      
-      if (error.message === 'Archivo no encontrado') {
-        return res.status(404).json({ error: error.message });
+      console.error("Error al eliminar archivo:", error);
+
+      if (error.message === "Archivo no encontrado") {
+        return res.notFound("Archivo");
       }
 
-      return res.status(500).json({ 
-        error: error.message || 'Error al eliminar el archivo' 
+      return res.error("Error al eliminar el archivo", 500, {
+        code: "DELETE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -137,29 +122,25 @@ const archivoController = {
       const { expiresIn } = req.query; // Tiempo de expiración en segundos (default: 3600)
 
       if (!idArchivo) {
-        return res.status(400).json({ 
-          error: 'El idArchivo es requerido' 
-        });
+        return res.validationError("El idArchivo es requerido");
       }
 
       const urlData = await archivoService.generarUrlFirmada(
-        idArchivo, 
+        idArchivo,
         expiresIn ? parseInt(expiresIn) : 3600
       );
 
-      return res.status(200).json({
-        mensaje: 'URL firmada generada exitosamente',
-        ...urlData,
-      });
+      return res.success("URL firmada generada exitosamente", urlData);
     } catch (error) {
-      console.error('Error al generar URL firmada:', error);
-      
-      if (error.message === 'Archivo no encontrado') {
-        return res.status(404).json({ error: error.message });
+      console.error("Error al generar URL firmada:", error);
+
+      if (error.message === "Archivo no encontrado") {
+        return res.notFound("Archivo");
       }
 
-      return res.status(500).json({ 
-        error: error.message || 'Error al generar URL firmada' 
+      return res.error("Error al generar URL firmada", 500, {
+        code: "URL_GENERATION_ERROR",
+        details: error.message,
       });
     }
   },

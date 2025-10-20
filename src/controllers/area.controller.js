@@ -10,21 +10,16 @@ const areaController = {
       const { nombre } = req.body;
 
       if (!nombre) {
-        return res.status(400).json({
-          error: "El campo nombre es requerido",
-        });
+        return res.validationError("El campo nombre es requerido");
       }
 
       const area = await areaService.crearArea(req.body);
-
-      return res.status(201).json({
-        mensaje: "Área creada exitosamente",
-        area,
-      });
+      return res.success("Área creada exitosamente", area, 201);
     } catch (error) {
       console.error("Error al crear área:", error);
-      return res.status(500).json({
-        error: error.message || "Error al crear el área",
+      return res.error("Error al crear el área", 500, {
+        code: "CREATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -36,16 +31,15 @@ const areaController = {
   async obtenerAreas(req, res) {
     try {
       const areas = await areaService.obtenerAreas();
-
-      return res.status(200).json({
-        mensaje: "Áreas obtenidas exitosamente",
-        cantidad: areas.length,
-        areas,
+      return res.success("Áreas obtenidas exitosamente", {
+        count: areas.length,
+        items: areas,
       });
     } catch (error) {
       console.error("Error al obtener áreas:", error);
-      return res.status(500).json({
-        error: error.message || "Error al obtener las áreas",
+      return res.error("Error al obtener las áreas", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -57,22 +51,18 @@ const areaController = {
   async obtenerAreaPorId(req, res) {
     try {
       const { idArea } = req.params;
-
       const area = await areaService.obtenerAreaPorId(idArea);
-
-      return res.status(200).json({
-        mensaje: "Área obtenida exitosamente",
-        area,
-      });
+      return res.success("Área obtenida exitosamente", area);
     } catch (error) {
       console.error("Error al obtener área:", error);
 
       if (error.message === "Área no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("Área");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al obtener el área",
+      return res.error("Error al obtener el área", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -84,22 +74,18 @@ const areaController = {
   async actualizarArea(req, res) {
     try {
       const { idArea } = req.params;
-
       const area = await areaService.actualizarArea(idArea, req.body);
-
-      return res.status(200).json({
-        mensaje: "Área actualizada exitosamente",
-        area,
-      });
+      return res.success("Área actualizada exitosamente", area);
     } catch (error) {
       console.error("Error al actualizar área:", error);
 
       if (error.message === "Área no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("Área");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al actualizar el área",
+      return res.error("Error al actualizar el área", 500, {
+        code: "UPDATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -111,19 +97,18 @@ const areaController = {
   async eliminarArea(req, res) {
     try {
       const { idArea } = req.params;
-
       const resultado = await areaService.eliminarArea(idArea);
-
-      return res.status(200).json(resultado);
+      return res.success("Área eliminada exitosamente", { idArea });
     } catch (error) {
       console.error("Error al eliminar área:", error);
 
       if (error.message === "Área no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("Área");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al eliminar el área",
+      return res.error("Error al eliminar el área", 500, {
+        code: "DELETE_ERROR",
+        details: error.message,
       });
     }
   },

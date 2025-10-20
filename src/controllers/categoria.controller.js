@@ -1,4 +1,4 @@
-const categoriaService = require('../services/categoria.service');
+const categoriaService = require("../services/categoria.service");
 
 const categoriaController = {
   /**
@@ -10,19 +10,16 @@ const categoriaController = {
       const { nombre } = req.body;
 
       if (!nombre) {
-        return res.status(400).json({ error: 'El nombre es requerido' });
+        return res.validationError("El campo nombre es requerido");
       }
 
       const categoria = await categoriaService.crearCategoria(req.body);
-
-      return res.status(201).json({
-        mensaje: 'Categoría creada exitosamente',
-        categoria,
-      });
+      return res.success("Categoría creada exitosamente", categoria, 201);
     } catch (error) {
-      console.error('Error al crear categoría:', error);
-      return res.status(500).json({
-        error: error.message || 'Error al crear la categoría',
+      console.error("Error al crear categoría:", error);
+      return res.error("Error al crear la categoría", 500, {
+        code: "CREATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -34,16 +31,15 @@ const categoriaController = {
   async obtenerCategorias(req, res) {
     try {
       const categorias = await categoriaService.obtenerCategorias();
-
-      return res.status(200).json({
-        mensaje: 'Categorías obtenidas exitosamente',
-        cantidad: categorias.length,
-        categorias,
+      return res.success("Categorías obtenidas exitosamente", {
+        count: categorias.length,
+        items: categorias,
       });
     } catch (error) {
-      console.error('Error al obtener categorías:', error);
-      return res.status(500).json({
-        error: error.message || 'Error al obtener las categorías',
+      console.error("Error al obtener categorías:", error);
+      return res.error("Error al obtener las categorías", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -55,22 +51,20 @@ const categoriaController = {
   async obtenerCategoriaPorId(req, res) {
     try {
       const { idCategoria } = req.params;
-
-      const categoria = await categoriaService.obtenerCategoriaPorId(idCategoria);
-
-      return res.status(200).json({
-        mensaje: 'Categoría obtenida exitosamente',
-        categoria,
-      });
+      const categoria = await categoriaService.obtenerCategoriaPorId(
+        idCategoria
+      );
+      return res.success("Categoría obtenida exitosamente", categoria);
     } catch (error) {
-      console.error('Error al obtener categoría:', error);
+      console.error("Error al obtener categoría:", error);
 
-      if (error.message === 'Categoría no encontrada') {
-        return res.status(404).json({ error: error.message });
+      if (error.message === "Categoría no encontrada") {
+        return res.notFound("Categoría");
       }
 
-      return res.status(500).json({
-        error: error.message || 'Error al obtener la categoría',
+      return res.error("Error al obtener la categoría", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -82,22 +76,21 @@ const categoriaController = {
   async actualizarCategoria(req, res) {
     try {
       const { idCategoria } = req.params;
-
-      const categoria = await categoriaService.actualizarCategoria(idCategoria, req.body);
-
-      return res.status(200).json({
-        mensaje: 'Categoría actualizada exitosamente',
-        categoria,
-      });
+      const categoria = await categoriaService.actualizarCategoria(
+        idCategoria,
+        req.body
+      );
+      return res.success("Categoría actualizada exitosamente", categoria);
     } catch (error) {
-      console.error('Error al actualizar categoría:', error);
+      console.error("Error al actualizar categoría:", error);
 
-      if (error.message === 'Categoría no encontrada') {
-        return res.status(404).json({ error: error.message });
+      if (error.message === "Categoría no encontrada") {
+        return res.notFound("Categoría");
       }
 
-      return res.status(500).json({
-        error: error.message || 'Error al actualizar la categoría',
+      return res.error("Error al actualizar la categoría", 500, {
+        code: "UPDATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -109,19 +102,18 @@ const categoriaController = {
   async eliminarCategoria(req, res) {
     try {
       const { idCategoria } = req.params;
-
       const resultado = await categoriaService.eliminarCategoria(idCategoria);
-
-      return res.status(200).json(resultado);
+      return res.success("Categoría eliminada exitosamente", { idCategoria });
     } catch (error) {
-      console.error('Error al eliminar categoría:', error);
+      console.error("Error al eliminar categoría:", error);
 
-      if (error.message === 'Categoría no encontrada') {
-        return res.status(404).json({ error: error.message });
+      if (error.message === "Categoría no encontrada") {
+        return res.notFound("Categoría");
       }
 
-      return res.status(500).json({
-        error: error.message || 'Error al eliminar la categoría',
+      return res.error("Error al eliminar la categoría", 500, {
+        code: "DELETE_ERROR",
+        details: error.message,
       });
     }
   },

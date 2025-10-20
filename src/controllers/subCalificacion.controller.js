@@ -10,18 +10,17 @@ const subCalificacionController = {
       const { nombre, maximoPuntaje, idTipoCalificacion } = req.body;
 
       if (!nombre || maximoPuntaje === undefined || !idTipoCalificacion) {
-        return res.status(400).json({
-          error:
-            "Los campos nombre, maximoPuntaje e idTipoCalificacion son requeridos",
-        });
+        return res.validationError(
+          "Los campos nombre, maximoPuntaje e idTipoCalificacion son requeridos"
+        );
       }
 
       // Validar que maximoPuntaje sea mayor a 0
       const maximoPuntajeNum = Number(maximoPuntaje);
       if (isNaN(maximoPuntajeNum) || maximoPuntajeNum <= 0) {
-        return res.status(400).json({
-          error: "El campo maximoPuntaje debe ser un número mayor a 0",
-        });
+        return res.validationError(
+          "El campo maximoPuntaje debe ser un número mayor a 0"
+        );
       }
 
       // Validación de sumatoria de puntajes máximos
@@ -30,29 +29,30 @@ const subCalificacionController = {
           idTipoCalificacion
         );
       const sumaActual = subCalificaciones.reduce(
-        (acc, sc) => acc + (sc.maximoPuntaje || 0),
+        (acc, sc) => acc + Number(sc.maximoPuntaje || 0),
         0
       );
       if (sumaActual + maximoPuntajeNum > 100) {
-        return res.status(400).json({
-          error: `La sumatoria de puntajes máximos para este tipoCalificacion excede 100. Puntaje disponible: ${
+        return res.validationError(
+          `La sumatoria de puntajes máximos para este tipoCalificacion excede 100. Puntaje disponible: ${
             100 - sumaActual
-          }`,
-        });
+          }`
+        );
       }
 
       const subCalificacion = await subCalificacionService.crearSubCalificacion(
         req.body
       );
-
-      return res.status(201).json({
-        mensaje: "Subcalificación creada exitosamente",
+      return res.success(
+        "Subcalificación creada exitosamente",
         subCalificacion,
-      });
+        201
+      );
     } catch (error) {
       console.error("Error al crear subcalificación:", error);
-      return res.status(500).json({
-        error: error.message || "Error al crear la subcalificación",
+      return res.error("Error al crear la subcalificación", 500, {
+        code: "CREATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -65,16 +65,15 @@ const subCalificacionController = {
     try {
       const subCalificaciones =
         await subCalificacionService.obtenerSubCalificaciones();
-
-      return res.status(200).json({
-        mensaje: "Subcalificaciones obtenidas exitosamente",
-        cantidad: subCalificaciones.length,
-        subCalificaciones,
+      return res.success("Subcalificaciones obtenidas exitosamente", {
+        count: subCalificaciones.length,
+        items: subCalificaciones,
       });
     } catch (error) {
       console.error("Error al obtener subcalificaciones:", error);
-      return res.status(500).json({
-        error: error.message || "Error al obtener las subcalificaciones",
+      return res.error("Error al obtener las subcalificaciones", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -86,25 +85,24 @@ const subCalificacionController = {
   async obtenerSubCalificacionPorId(req, res) {
     try {
       const { idSubCalificacion } = req.params;
-
       const subCalificacion =
         await subCalificacionService.obtenerSubCalificacionPorId(
           idSubCalificacion
         );
-
-      return res.status(200).json({
-        mensaje: "Subcalificación obtenida exitosamente",
-        subCalificacion,
-      });
+      return res.success(
+        "Subcalificación obtenida exitosamente",
+        subCalificacion
+      );
     } catch (error) {
       console.error("Error al obtener subcalificación:", error);
 
       if (error.message === "Subcalificación no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("Subcalificación");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al obtener la subcalificación",
+      return res.error("Error al obtener la subcalificación", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -116,21 +114,19 @@ const subCalificacionController = {
   async obtenerSubCalificacionesPorTipo(req, res) {
     try {
       const { idTipoCalificacion } = req.params;
-
       const subCalificaciones =
         await subCalificacionService.obtenerSubCalificacionesPorTipo(
           idTipoCalificacion
         );
-
-      return res.status(200).json({
-        mensaje: "Subcalificaciones obtenidas exitosamente",
-        cantidad: subCalificaciones.length,
-        subCalificaciones,
+      return res.success("Subcalificaciones obtenidas exitosamente", {
+        count: subCalificaciones.length,
+        items: subCalificaciones,
       });
     } catch (error) {
       console.error("Error al obtener subcalificaciones:", error);
-      return res.status(500).json({
-        error: error.message || "Error al obtener las subcalificaciones",
+      return res.error("Error al obtener las subcalificaciones", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -158,9 +154,9 @@ const subCalificacionController = {
         if (maximoPuntaje !== undefined) {
           nuevoPuntajeNum = Number(maximoPuntaje);
           if (isNaN(nuevoPuntajeNum) || nuevoPuntajeNum <= 0) {
-            return res.status(400).json({
-              error: "El campo maximoPuntaje debe ser un número mayor a 0",
-            });
+            return res.validationError(
+              "El campo maximoPuntaje debe ser un número mayor a 0"
+            );
           }
         } else {
           nuevoPuntajeNum = subActual.maximoPuntaje;
@@ -179,11 +175,11 @@ const subCalificacionController = {
         );
 
         if (sumaSinActual + nuevoPuntajeNum > 100) {
-          return res.status(400).json({
-            error: `La sumatoria de puntajes máximos para este tipoCalificacion excede 100. Puntaje disponible: ${
+          return res.validationError(
+            `La sumatoria de puntajes máximos para este tipoCalificacion excede 100. Puntaje disponible: ${
               100 - sumaSinActual
-            }`,
-          });
+            }`
+          );
         }
       }
 
@@ -193,19 +189,20 @@ const subCalificacionController = {
           req.body
         );
 
-      return res.status(200).json({
-        mensaje: "Subcalificación actualizada exitosamente",
-        subCalificacion,
-      });
+      return res.success(
+        "Subcalificación actualizada exitosamente",
+        subCalificacion
+      );
     } catch (error) {
       console.error("Error al actualizar subcalificación:", error);
 
       if (error.message === "Subcalificación no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("Subcalificación");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al actualizar la subcalificación",
+      return res.error("Error al actualizar la subcalificación", 500, {
+        code: "UPDATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -218,20 +215,21 @@ const subCalificacionController = {
     try {
       const { idSubCalificacion } = req.params;
 
-      const resultado = await subCalificacionService.eliminarSubCalificacion(
-        idSubCalificacion
-      );
+      await subCalificacionService.eliminarSubCalificacion(idSubCalificacion);
 
-      return res.status(200).json(resultado);
+      return res.success("Subcalificación eliminada exitosamente", {
+        idSubCalificacion,
+      });
     } catch (error) {
       console.error("Error al eliminar subcalificación:", error);
 
       if (error.message === "Subcalificación no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("Subcalificación");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al eliminar la subcalificación",
+      return res.error("Error al eliminar la subcalificación", 500, {
+        code: "DELETE_ERROR",
+        details: error.message,
       });
     }
   },

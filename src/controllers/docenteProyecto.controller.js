@@ -1,4 +1,4 @@
-const docenteProyectoService = require('../services/docenteProyecto.service');
+const docenteProyectoService = require("../services/docenteProyecto.service");
 
 const docenteProyectoController = {
   /**
@@ -10,21 +10,24 @@ const docenteProyectoController = {
       const { idDocente, idProyecto } = req.body;
 
       if (!idDocente || !idProyecto) {
-        return res.status(400).json({
-          error: 'Los campos idDocente e idProyecto son requeridos',
-        });
+        return res.validationError(
+          "Los campos idDocente e idProyecto son requeridos"
+        );
       }
 
-      const asignacion = await docenteProyectoService.asignarDocenteAProyecto(req.body);
-
-      return res.status(201).json({
-        mensaje: 'Docente asignado al proyecto exitosamente',
+      const asignacion = await docenteProyectoService.asignarDocenteAProyecto(
+        req.body
+      );
+      return res.success(
+        "Docente asignado al proyecto exitosamente",
         asignacion,
-      });
+        201
+      );
     } catch (error) {
-      console.error('Error al asignar docente:', error);
-      return res.status(500).json({
-        error: error.message || 'Error al asignar docente al proyecto',
+      console.error("Error al asignar docente:", error);
+      return res.error("Error al asignar docente al proyecto", 500, {
+        code: "CREATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -36,16 +39,15 @@ const docenteProyectoController = {
   async obtenerAsignaciones(req, res) {
     try {
       const asignaciones = await docenteProyectoService.obtenerAsignaciones();
-
-      return res.status(200).json({
-        mensaje: 'Asignaciones obtenidas exitosamente',
-        cantidad: asignaciones.length,
-        asignaciones,
+      return res.success("Asignaciones obtenidas exitosamente", {
+        count: asignaciones.length,
+        items: asignaciones,
       });
     } catch (error) {
-      console.error('Error al obtener asignaciones:', error);
-      return res.status(500).json({
-        error: error.message || 'Error al obtener las asignaciones',
+      console.error("Error al obtener asignaciones:", error);
+      return res.error("Error al obtener las asignaciones", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -57,22 +59,20 @@ const docenteProyectoController = {
   async obtenerAsignacionPorId(req, res) {
     try {
       const { idDocenteProyecto } = req.params;
-
-      const asignacion = await docenteProyectoService.obtenerAsignacionPorId(idDocenteProyecto);
-
-      return res.status(200).json({
-        mensaje: 'Asignación obtenida exitosamente',
-        asignacion,
-      });
+      const asignacion = await docenteProyectoService.obtenerAsignacionPorId(
+        idDocenteProyecto
+      );
+      return res.success("Asignación obtenida exitosamente", asignacion);
     } catch (error) {
-      console.error('Error al obtener asignación:', error);
+      console.error("Error al obtener asignación:", error);
 
-      if (error.message === 'Asignación no encontrada') {
-        return res.status(404).json({ error: error.message });
+      if (error.message === "Asignación no encontrada") {
+        return res.notFound("Asignación");
       }
 
-      return res.status(500).json({
-        error: error.message || 'Error al obtener la asignación',
+      return res.error("Error al obtener la asignación", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -84,18 +84,18 @@ const docenteProyectoController = {
   async obtenerDocentesPorProyecto(req, res) {
     try {
       const { idProyecto } = req.params;
-
-      const docentes = await docenteProyectoService.obtenerDocentesPorProyecto(idProyecto);
-
-      return res.status(200).json({
-        mensaje: 'Docentes obtenidos exitosamente',
-        cantidad: docentes.length,
-        docentes,
+      const docentes = await docenteProyectoService.obtenerDocentesPorProyecto(
+        idProyecto
+      );
+      return res.success("Docentes obtenidos exitosamente", {
+        count: docentes.length,
+        items: docentes,
       });
     } catch (error) {
-      console.error('Error al obtener docentes:', error);
-      return res.status(500).json({
-        error: error.message || 'Error al obtener los docentes del proyecto',
+      console.error("Error al obtener docentes:", error);
+      return res.error("Error al obtener los docentes del proyecto", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -107,18 +107,18 @@ const docenteProyectoController = {
   async obtenerProyectosPorDocente(req, res) {
     try {
       const { idDocente } = req.params;
-
-      const proyectos = await docenteProyectoService.obtenerProyectosPorDocente(idDocente);
-
-      return res.status(200).json({
-        mensaje: 'Proyectos obtenidos exitosamente',
-        cantidad: proyectos.length,
-        proyectos,
+      const proyectos = await docenteProyectoService.obtenerProyectosPorDocente(
+        idDocente
+      );
+      return res.success("Proyectos obtenidos exitosamente", {
+        count: proyectos.length,
+        items: proyectos,
       });
     } catch (error) {
-      console.error('Error al obtener proyectos:', error);
-      return res.status(500).json({
-        error: error.message || 'Error al obtener los proyectos del docente',
+      console.error("Error al obtener proyectos:", error);
+      return res.error("Error al obtener los proyectos del docente", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -130,25 +130,21 @@ const docenteProyectoController = {
   async actualizarAsignacion(req, res) {
     try {
       const { idDocenteProyecto } = req.params;
-
       const asignacion = await docenteProyectoService.actualizarAsignacion(
         idDocenteProyecto,
         req.body
       );
-
-      return res.status(200).json({
-        mensaje: 'Asignación actualizada exitosamente',
-        asignacion,
-      });
+      return res.success("Asignación actualizada exitosamente", asignacion);
     } catch (error) {
-      console.error('Error al actualizar asignación:', error);
+      console.error("Error al actualizar asignación:", error);
 
-      if (error.message === 'Asignación no encontrada') {
-        return res.status(404).json({ error: error.message });
+      if (error.message === "Asignación no encontrada") {
+        return res.notFound("Asignación");
       }
 
-      return res.status(500).json({
-        error: error.message || 'Error al actualizar la asignación',
+      return res.error("Error al actualizar la asignación", 500, {
+        code: "UPDATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -160,19 +156,22 @@ const docenteProyectoController = {
   async eliminarAsignacion(req, res) {
     try {
       const { idDocenteProyecto } = req.params;
-
-      const resultado = await docenteProyectoService.eliminarAsignacion(idDocenteProyecto);
-
-      return res.status(200).json(resultado);
+      const resultado = await docenteProyectoService.eliminarAsignacion(
+        idDocenteProyecto
+      );
+      return res.success("Asignación eliminada exitosamente", {
+        idDocenteProyecto,
+      });
     } catch (error) {
-      console.error('Error al eliminar asignación:', error);
+      console.error("Error al eliminar asignación:", error);
 
-      if (error.message === 'Asignación no encontrada') {
-        return res.status(404).json({ error: error.message });
+      if (error.message === "Asignación no encontrada") {
+        return res.notFound("Asignación");
       }
 
-      return res.status(500).json({
-        error: error.message || 'Error al eliminar la asignación',
+      return res.error("Error al eliminar la asignación", 500, {
+        code: "DELETE_ERROR",
+        details: error.message,
       });
     }
   },

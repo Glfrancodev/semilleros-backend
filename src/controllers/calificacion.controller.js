@@ -16,19 +16,17 @@ const calificacionController = {
         !idSubCalificacion ||
         !idDocenteProyecto
       ) {
-        return res.status(400).json({
-          error:
-            "Los campos puntajeObtenido, idSubCalificacion e idDocenteProyecto son requeridos",
-        });
+        return res.validationError(
+          "Los campos puntajeObtenido, idSubCalificacion e idDocenteProyecto son requeridos"
+        );
       }
 
       // Validar que puntajeObtenido no sea negativo
       const puntajeObtenidoNum = Number(puntajeObtenido);
       if (isNaN(puntajeObtenidoNum) || puntajeObtenidoNum < 0) {
-        return res.status(400).json({
-          error:
-            "El campo puntajeObtenido debe ser un número mayor o igual a 0",
-        });
+        return res.validationError(
+          "El campo puntajeObtenido debe ser un número mayor o igual a 0"
+        );
       }
 
       // Obtener la subCalificacion para validar el puntaje máximo
@@ -37,30 +35,26 @@ const calificacionController = {
           idSubCalificacion
         );
       if (!subCalificacion) {
-        return res.status(404).json({
-          error: "SubCalificación no encontrada",
-        });
+        return res.notFound("SubCalificación");
       }
 
       // Validar que el puntaje obtenido no exceda el puntaje máximo
       if (puntajeObtenidoNum > subCalificacion.maximoPuntaje) {
-        return res.status(400).json({
-          error: `El puntajeObtenido (${puntajeObtenidoNum}) no puede ser mayor que el puntaje máximo de la subcalificación (${subCalificacion.maximoPuntaje})`,
-        });
+        return res.validationError(
+          `El puntajeObtenido (${puntajeObtenidoNum}) no puede ser mayor que el puntaje máximo de la subcalificación (${subCalificacion.maximoPuntaje})`
+        );
       }
 
       const calificacion = await calificacionService.crearCalificacion(
         req.body
       );
 
-      return res.status(201).json({
-        mensaje: "Calificación creada exitosamente",
-        calificacion,
-      });
+      return res.success("Calificación creada exitosamente", calificacion, 201);
     } catch (error) {
       console.error("Error al crear calificación:", error);
-      return res.status(500).json({
-        error: error.message || "Error al crear la calificación",
+      return res.error("Error al crear la calificación", 500, {
+        code: "CREATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -72,16 +66,15 @@ const calificacionController = {
   async obtenerCalificaciones(req, res) {
     try {
       const calificaciones = await calificacionService.obtenerCalificaciones();
-
-      return res.status(200).json({
-        mensaje: "Calificaciones obtenidas exitosamente",
-        cantidad: calificaciones.length,
-        calificaciones,
+      return res.success("Calificaciones obtenidas exitosamente", {
+        count: calificaciones.length,
+        items: calificaciones,
       });
     } catch (error) {
       console.error("Error al obtener calificaciones:", error);
-      return res.status(500).json({
-        error: error.message || "Error al obtener las calificaciones",
+      return res.error("Error al obtener las calificaciones", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -93,24 +86,20 @@ const calificacionController = {
   async obtenerCalificacionPorId(req, res) {
     try {
       const { idCalificacion } = req.params;
-
       const calificacion = await calificacionService.obtenerCalificacionPorId(
         idCalificacion
       );
-
-      return res.status(200).json({
-        mensaje: "Calificación obtenida exitosamente",
-        calificacion,
-      });
+      return res.success("Calificación obtenida exitosamente", calificacion);
     } catch (error) {
       console.error("Error al obtener calificación:", error);
 
       if (error.message === "Calificación no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("Calificación");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al obtener la calificación",
+      return res.error("Error al obtener la calificación", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -122,21 +111,19 @@ const calificacionController = {
   async obtenerCalificacionesPorDocenteProyecto(req, res) {
     try {
       const { idDocenteProyecto } = req.params;
-
       const calificaciones =
         await calificacionService.obtenerCalificacionesPorDocenteProyecto(
           idDocenteProyecto
         );
-
-      return res.status(200).json({
-        mensaje: "Calificaciones obtenidas exitosamente",
-        cantidad: calificaciones.length,
-        calificaciones,
+      return res.success("Calificaciones obtenidas exitosamente", {
+        count: calificaciones.length,
+        items: calificaciones,
       });
     } catch (error) {
       console.error("Error al obtener calificaciones:", error);
-      return res.status(500).json({
-        error: error.message || "Error al obtener las calificaciones",
+      return res.error("Error al obtener las calificaciones", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -148,21 +135,19 @@ const calificacionController = {
   async obtenerCalificacionesPorSubCalificacion(req, res) {
     try {
       const { idSubCalificacion } = req.params;
-
       const calificaciones =
         await calificacionService.obtenerCalificacionesPorSubCalificacion(
           idSubCalificacion
         );
-
-      return res.status(200).json({
-        mensaje: "Calificaciones obtenidas exitosamente",
-        cantidad: calificaciones.length,
-        calificaciones,
+      return res.success("Calificaciones obtenidas exitosamente", {
+        count: calificaciones.length,
+        items: calificaciones,
       });
     } catch (error) {
       console.error("Error al obtener calificaciones:", error);
-      return res.status(500).json({
-        error: error.message || "Error al obtener las calificaciones",
+      return res.error("Error al obtener las calificaciones", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
       });
     }
   },
@@ -191,9 +176,7 @@ const calificacionController = {
           );
 
         if (!subCalificacion) {
-          return res.status(404).json({
-            error: "SubCalificación no encontrada",
-          });
+          return res.notFound("SubCalificación");
         }
 
         // Validar el puntaje obtenido
@@ -203,17 +186,16 @@ const calificacionController = {
             : calificacionActual.puntajeObtenido;
 
         if (isNaN(puntajeObtenidoNum) || puntajeObtenidoNum < 0) {
-          return res.status(400).json({
-            error:
-              "El campo puntajeObtenido debe ser un número mayor o igual a 0",
-          });
+          return res.validationError(
+            "El campo puntajeObtenido debe ser un número mayor o igual a 0"
+          );
         }
 
         // Validar que el puntaje obtenido no exceda el puntaje máximo
         if (puntajeObtenidoNum > subCalificacion.maximoPuntaje) {
-          return res.status(400).json({
-            error: `El puntajeObtenido (${puntajeObtenidoNum}) no puede ser mayor que el puntaje máximo de la subcalificación (${subCalificacion.maximoPuntaje})`,
-          });
+          return res.validationError(
+            `El puntajeObtenido (${puntajeObtenidoNum}) no puede ser mayor que el puntaje máximo de la subcalificación (${subCalificacion.maximoPuntaje})`
+          );
         }
       }
 
@@ -222,19 +204,17 @@ const calificacionController = {
         req.body
       );
 
-      return res.status(200).json({
-        mensaje: "Calificación actualizada exitosamente",
-        calificacion,
-      });
+      return res.success("Calificación actualizada exitosamente", calificacion);
     } catch (error) {
       console.error("Error al actualizar calificación:", error);
 
       if (error.message === "Calificación no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("Calificación");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al actualizar la calificación",
+      return res.error("Error al actualizar la calificación", 500, {
+        code: "UPDATE_ERROR",
+        details: error.message,
       });
     }
   },
@@ -246,21 +226,20 @@ const calificacionController = {
   async eliminarCalificacion(req, res) {
     try {
       const { idCalificacion } = req.params;
-
-      const resultado = await calificacionService.eliminarCalificacion(
-        idCalificacion
-      );
-
-      return res.status(200).json(resultado);
+      await calificacionService.eliminarCalificacion(idCalificacion);
+      return res.success("Calificación eliminada exitosamente", {
+        idCalificacion,
+      });
     } catch (error) {
       console.error("Error al eliminar calificación:", error);
 
       if (error.message === "Calificación no encontrada") {
-        return res.status(404).json({ error: error.message });
+        return res.notFound("Calificación");
       }
 
-      return res.status(500).json({
-        error: error.message || "Error al eliminar la calificación",
+      return res.error("Error al eliminar la calificación", 500, {
+        code: "DELETE_ERROR",
+        details: error.message,
       });
     }
   },

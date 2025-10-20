@@ -1,12 +1,16 @@
-const semestreService = require('../services/semestre.service');
+const semestreService = require("../services/semestre.service");
 
 // Crear un nuevo Semestre
 const crearSemestre = async (req, res, next) => {
   try {
     const nuevoSemestre = await semestreService.crearSemestre(req.body);
-    res.status(201).json(nuevoSemestre);
+    return res.success("Semestre creado exitosamente", nuevoSemestre, 201);
   } catch (err) {
-    next(err);
+    console.error("Error al crear semestre:", err);
+    return res.error("Error al crear el semestre", 500, {
+      code: "CREATE_ERROR",
+      details: err.message,
+    });
   }
 };
 
@@ -14,9 +18,16 @@ const crearSemestre = async (req, res, next) => {
 const obtenerSemestres = async (req, res, next) => {
   try {
     const semestres = await semestreService.obtenerSemestres();
-    res.json(semestres);
+    return res.success("Semestres obtenidos exitosamente", {
+      count: semestres.length,
+      items: semestres,
+    });
   } catch (err) {
-    next(err);
+    console.error("Error al obtener semestres:", err);
+    return res.error("Error al obtener los semestres", 500, {
+      code: "FETCH_ERROR",
+      details: err.message,
+    });
   }
 };
 
@@ -24,21 +35,39 @@ const obtenerSemestres = async (req, res, next) => {
 const obtenerSemestrePorId = async (req, res, next) => {
   try {
     const semestre = await semestreService.obtenerSemestrePorId(req.params.id);
-    if (!semestre) return res.status(404).json({ error: 'Semestre no encontrado' });
-    res.json(semestre);
+    if (!semestre) return res.notFound("Semestre");
+    return res.success("Semestre obtenido exitosamente", semestre);
   } catch (err) {
-    next(err);
+    console.error("Error al obtener semestre:", err);
+    return res.error("Error al obtener el semestre", 500, {
+      code: "FETCH_ERROR",
+      details: err.message,
+    });
   }
 };
 
 // Actualizar un Semestre
 const actualizarSemestre = async (req, res, next) => {
   try {
-    const [actualizados] = await semestreService.actualizarSemestre(req.params.id, req.body);
-    if (actualizados === 0) return res.status(404).json({ error: 'Semestre no encontrado' });
-    res.json({ mensaje: 'Semestre actualizado correctamente' });
+    const [actualizados] = await semestreService.actualizarSemestre(
+      req.params.id,
+      req.body
+    );
+    if (actualizados === 0) return res.notFound("Semestre");
+
+    const semestreActualizado = await semestreService.obtenerSemestrePorId(
+      req.params.id
+    );
+    return res.success(
+      "Semestre actualizado exitosamente",
+      semestreActualizado
+    );
   } catch (err) {
-    next(err);
+    console.error("Error al actualizar semestre:", err);
+    return res.error("Error al actualizar el semestre", 500, {
+      code: "UPDATE_ERROR",
+      details: err.message,
+    });
   }
 };
 
@@ -46,10 +75,16 @@ const actualizarSemestre = async (req, res, next) => {
 const eliminarSemestre = async (req, res, next) => {
   try {
     const eliminados = await semestreService.eliminarSemestre(req.params.id);
-    if (eliminados === 0) return res.status(404).json({ error: 'Semestre no encontrado' });
-    res.json({ mensaje: 'Semestre eliminado correctamente' });
+    if (eliminados === 0) return res.notFound("Semestre");
+    return res.success("Semestre eliminado exitosamente", {
+      idSemestre: req.params.id,
+    });
   } catch (err) {
-    next(err);
+    console.error("Error al eliminar semestre:", err);
+    return res.error("Error al eliminar el semestre", 500, {
+      code: "DELETE_ERROR",
+      details: err.message,
+    });
   }
 };
 
