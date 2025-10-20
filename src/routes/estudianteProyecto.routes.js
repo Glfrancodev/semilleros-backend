@@ -21,7 +21,7 @@ router.get(
   estudianteProyectoController.obtenerProyectosPorEstudiante
 );
 
-// PUT /api/estudiante-proyectos/:idEstudianteProyecto - Actualizar asignación
+// PUT /api/estudiante-proyectos/:idEstudianteProyecto - Actualizar asignació
 router.put(
   "/:idEstudianteProyecto",
   estudianteProyectoController.actualizarAsignacion
