@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
   const Categoria = sequelize.define(
-    'Categoria',
+    "Categoria",
     {
       idCategoria: {
         type: DataTypes.UUID,
@@ -22,19 +22,19 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'Categoria',
+      tableName: "Categoria",
       freezeTableName: true,
       timestamps: false, // fechas gestionadas manualmente
     }
   );
 
   Categoria.associate = (models) => {
-    // Relación con Proyecto (Categoria -> Proyecto)
-    Categoria.hasMany(models.Proyecto, {
-      as: 'proyectos',
-      foreignKey: { name: 'idCategoria', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+    // Relación con AreaCategoria (Categoria -> AreaCategoria)
+    Categoria.hasMany(models.AreaCategoria, {
+      as: "areaCategorias",
+      foreignKey: { name: "idCategoria", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
   };
 

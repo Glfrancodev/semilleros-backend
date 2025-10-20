@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
   const Materia = sequelize.define(
-    'Materia',
+    "Materia",
     {
       idMateria: {
         type: DataTypes.UUID,
@@ -17,6 +17,14 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: { notEmpty: true },
       },
+      idAreaCategoria: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: "AreaCategoria",
+          key: "idAreaCategoria",
+        },
+      },
       fechaCreacion: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
@@ -27,28 +35,36 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'Materia',
+      tableName: "Materia",
       freezeTableName: true,
-      timestamps: false,  // No gestionamos los timestamps automáticamente
+      timestamps: false, // No gestionamos los timestamps automáticamente
     }
   );
 
   // Asociaciones
   Materia.associate = (models) => {
+    // Relación con AreaCategoria (Materia -> AreaCategoria)
+    Materia.belongsTo(models.AreaCategoria, {
+      as: "areaCategoria",
+      foreignKey: { name: "idAreaCategoria", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+    });
+
     // Relación con la tabla Semestre (Materia -> Semestre)
     Materia.belongsTo(models.Semestre, {
-      as: 'semestre',
-      foreignKey: { name: 'idSemestre', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "semestre",
+      foreignKey: { name: "idSemestre", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
 
     // Relación con la tabla GrupoMateria (Materia -> GrupoMateria)
     Materia.hasMany(models.GrupoMateria, {
-      as: 'grupoMaterias',
-      foreignKey: { name: 'idMateria', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "grupoMaterias",
+      foreignKey: { name: "idMateria", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
   };
 

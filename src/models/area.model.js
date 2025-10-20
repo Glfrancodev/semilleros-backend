@@ -1,8 +1,8 @@
 module.exports = (sequelize, DataTypes) => {
-  const Convocatoria = sequelize.define(
-    "Convocatoria",
+  const Area = sequelize.define(
+    "Area",
     {
-      idConvocatoria: {
+      idArea: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
@@ -11,16 +11,6 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(100),
         allowNull: false,
         validate: { notEmpty: true },
-      },
-      semestre: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        validate: { min: 1 },
-      },
-      año: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        validate: { min: 2000 },
       },
       fechaCreacion: {
         type: DataTypes.DATE,
@@ -32,21 +22,21 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: "Convocatoria",
+      tableName: "Area",
       freezeTableName: true,
       timestamps: false, // fechas gestionadas manualmente
     }
   );
 
-  Convocatoria.associate = (models) => {
-    // Relación con Proyecto (Convocatoria -> Proyecto)
-    Convocatoria.hasMany(models.Proyecto, {
-      as: "proyectos",
-      foreignKey: { name: "idConvocatoria", allowNull: false },
+  Area.associate = (models) => {
+    // Relación con AreaCategoria (Area -> AreaCategoria)
+    Area.hasMany(models.AreaCategoria, {
+      as: "areaCategorias",
+      foreignKey: { name: "idArea", allowNull: false },
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
     });
   };
 
-  return Convocatoria;
+  return Area;
 };

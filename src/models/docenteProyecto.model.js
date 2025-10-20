@@ -7,6 +7,11 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
       },
+      esTutor: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
       fechaCreacion: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
@@ -40,10 +45,10 @@ module.exports = (sequelize, DataTypes) => {
       onDelete: 'CASCADE',
     });
 
-    // FK -> Calificacion
-    DocenteProyecto.belongsTo(models.Calificacion, {
-      as: 'calificacion',
-      foreignKey: { name: 'idCalificacion', allowNull: false },
+    // Relación 0 a muchos con Calificacion
+    DocenteProyecto.hasMany(models.Calificacion, {
+      as: 'calificaciones',
+      foreignKey: { name: 'idDocenteProyecto', allowNull: false },
       onUpdate: 'CASCADE',
       onDelete: 'CASCADE',
     });

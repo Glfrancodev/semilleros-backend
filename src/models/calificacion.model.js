@@ -7,10 +7,10 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
       },
-      nombre: {
-        type: DataTypes.STRING(100),
+      puntajeObtenido: {
+        type: DataTypes.FLOAT,
         allowNull: false,
-        validate: { notEmpty: true },
+        validate: { min: 0 },
       },
       fechaCreacion: {
         type: DataTypes.DATE,
@@ -29,18 +29,18 @@ module.exports = (sequelize, DataTypes) => {
   );
 
   Calificacion.associate = (models) => {
-    // Relación con TipoCalificacion
-    Calificacion.hasMany(models.TipoCalificacion, {
-      as: 'tiposCalificacion',
-      foreignKey: { name: 'idCalificacion', allowNull: false },
+    // FK -> SubCalificacion (1 a 1)
+    Calificacion.belongsTo(models.SubCalificacion, {
+      as: 'subCalificacion',
+      foreignKey: { name: 'idSubCalificacion', allowNull: false },
       onUpdate: 'CASCADE',
       onDelete: 'CASCADE',
     });
 
-    // Relación con DocenteProyecto
-    Calificacion.hasMany(models.DocenteProyecto, {
-      as: 'docentesProyecto',
-      foreignKey: { name: 'idCalificacion', allowNull: false },
+    // FK -> DocenteProyecto (1 a 1)
+    Calificacion.belongsTo(models.DocenteProyecto, {
+      as: 'docenteProyecto',
+      foreignKey: { name: 'idDocenteProyecto', allowNull: false },
       onUpdate: 'CASCADE',
       onDelete: 'CASCADE',
     });

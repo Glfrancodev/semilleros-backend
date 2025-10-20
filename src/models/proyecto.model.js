@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
   const Proyecto = sequelize.define(
-    'Proyecto',
+    "Proyecto",
     {
       idProyecto: {
         type: DataTypes.UUID,
@@ -40,66 +40,58 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'Proyecto',
+      tableName: "Proyecto",
       freezeTableName: true,
       timestamps: false, // fechas gestionadas manualmente
     }
   );
 
   Proyecto.associate = (models) => {
-    // FK -> Categoria
-    Proyecto.belongsTo(models.Categoria, {
-      as: 'categoria',
-      foreignKey: { name: 'idCategoria', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
-    });
-
     // FK -> GrupoMateria
     Proyecto.belongsTo(models.GrupoMateria, {
-      as: 'grupoMateria',
-      foreignKey: { name: 'idGrupoMateria', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "grupoMateria",
+      foreignKey: { name: "idGrupoMateria", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
 
     // FK -> Convocatoria
     Proyecto.belongsTo(models.Convocatoria, {
-      as: 'convocatoria',
-      foreignKey: { name: 'idConvocatoria', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "convocatoria",
+      foreignKey: { name: "idConvocatoria", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
 
     // Relación con EstudianteProyecto
     Proyecto.hasMany(models.EstudianteProyecto, {
-      as: 'estudiantesProyecto',
-      foreignKey: { name: 'idProyecto', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "estudiantesProyecto",
+      foreignKey: { name: "idProyecto", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
 
     // Relación con Archivo
     Proyecto.hasMany(models.Archivo, {
-      as: 'archivos',
-      foreignKey: { name: 'idProyecto', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "archivos",
+      foreignKey: { name: "idProyecto", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
 
     // Relación con Revision
     Proyecto.hasMany(models.Revision, {
-      as: 'revisiones',
-      foreignKey: { name: 'idProyecto', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "revisiones",
+      foreignKey: { name: "idProyecto", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
     // Relación con DocenteProyecto
     Proyecto.hasMany(models.DocenteProyecto, {
-    as: 'docentesProyecto',
-    foreignKey: { name: 'idProyecto', allowNull: false },
-    onUpdate: 'CASCADE',
-    onDelete: 'CASCADE',
+      as: "docentesProyecto",
+      foreignKey: { name: "idProyecto", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
   };
 
