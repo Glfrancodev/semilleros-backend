@@ -1,5 +1,6 @@
 const usuarioService = require("../services/usuario.service");
 const authService = require("../services/auth.service");
+const archivoService = require("../services/archivo.service");
 
 // Crear Usuario
 const crearUsuario = async (req, res, next) => {
@@ -128,6 +129,66 @@ const login = async (req, res, next) => {
   }
 };
 
+// Actualizar foto de perfil del usuario autenticado
+const actualizarFotoPerfil = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.validationError("No se ha proporcionado ningún archivo");
+    }
+
+    const idUsuario = req.user.idUsuario;
+
+    // Buscar si el usuario ya tiene una foto de perfil
+    const usuarioConFoto = await usuarioService.obtenerUsuarioPorId(idUsuario);
+
+    // Si tiene foto anterior, eliminarla de S3 y BD
+    if (usuarioConFoto.fotoPerfil) {
+      try {
+        await archivoService.eliminarArchivo(
+          usuarioConFoto.fotoPerfil.idArchivo
+        );
+        console.log(
+          "Foto de perfil anterior eliminada:",
+          usuarioConFoto.fotoPerfil.idArchivo
+        );
+      } catch (deleteError) {
+        console.error("Error al eliminar foto anterior:", deleteError);
+        // Continuar aunque falle la eliminación de la foto anterior
+      }
+    }
+
+    // Subir la nueva foto
+    const archivo = await archivoService.subirArchivo(req.file, {
+      idUsuario,
+    });
+
+    // Generar URL firmada para la foto (válida por 7 días)
+    const { url: urlFirmada, expiresIn } =
+      await archivoService.generarUrlFirmada(
+        archivo.idArchivo,
+        604800 // 7 días en segundos
+      );
+
+    // Generar nuevo token con la URL firmada actualizada
+    const nuevoToken = await authService.refreshToken(idUsuario);
+
+    return res.success("Foto de perfil actualizada exitosamente", {
+      token: nuevoToken,
+      fotoPerfil: {
+        ...archivo.toJSON(),
+        urlFirmada,
+        expiraEn: `${expiresIn / 86400} días`,
+      },
+    });
+  } catch (err) {
+    console.error("Error al actualizar foto de perfil:", err);
+    return res.error("Error al actualizar la foto de perfil", 500, {
+      code: "UPDATE_PHOTO_ERROR",
+      details: err.message,
+    });
+  }
+};
+
 module.exports = {
   crearUsuario,
   obtenerUsuarios,
@@ -135,5 +196,6 @@ module.exports = {
   obtenerPerfil,
   actualizarUsuario,
   toggleEstadoUsuario,
-  login, // Agregado
+  login,
+  actualizarFotoPerfil, // Nuevo
 };

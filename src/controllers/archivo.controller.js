@@ -3,21 +3,25 @@ const archivoService = require("../services/archivo.service");
 const archivoController = {
   /**
    * POST /api/archivos/upload
-   * Subir un archivo a S3 vinculado a un proyecto
+   * Subir un archivo a S3 vinculado a un proyecto o usuario (foto de perfil)
    */
   async subirArchivo(req, res) {
     try {
-      const { idProyecto } = req.body;
+      const { idProyecto, idRevision, idUsuario } = req.body;
 
-      if (!idProyecto) {
-        return res.validationError("El idProyecto es requerido");
+      if (!idProyecto && !idUsuario) {
+        return res.validationError("Se requiere idProyecto o idUsuario");
       }
 
       if (!req.file) {
         return res.validationError("No se ha proporcionado ningún archivo");
       }
 
-      const archivo = await archivoService.subirArchivo(req.file, idProyecto);
+      const archivo = await archivoService.subirArchivo(req.file, {
+        idProyecto,
+        idRevision,
+        idUsuario,
+      });
       return res.success("Archivo subido exitosamente", archivo, 201);
     } catch (error) {
       console.error("Error al subir archivo:", error);
@@ -42,6 +46,34 @@ const archivoController = {
 
       const archivos = await archivoService.obtenerArchivosPorProyecto(
         idProyecto
+      );
+      return res.success("Archivos obtenidos exitosamente", {
+        count: archivos.length,
+        items: archivos,
+      });
+    } catch (error) {
+      console.error("Error al obtener archivos:", error);
+      return res.error("Error al obtener los archivos", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/archivos/revision/:idRevision
+   * Obtener todos los archivos de una revisión
+   */
+  async obtenerArchivosPorRevision(req, res) {
+    try {
+      const { idRevision } = req.params;
+
+      if (!idRevision) {
+        return res.validationError("El idRevision es requerido");
+      }
+
+      const archivos = await archivoService.obtenerArchivosPorRevision(
+        idRevision
       );
       return res.success("Archivos obtenidos exitosamente", {
         count: archivos.length,

@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
   const Archivo = sequelize.define(
-    'Archivo',
+    "Archivo",
     {
       idArchivo: {
         type: DataTypes.UUID,
@@ -27,6 +27,19 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: { notEmpty: true },
       },
+      // Foreign Keys - Declaradas explícitamente para permitir NULL
+      idProyecto: {
+        type: DataTypes.UUID,
+        allowNull: true, // Puede ser null para fotos de perfil
+      },
+      idRevision: {
+        type: DataTypes.UUID,
+        allowNull: true, // Puede ser null si no está asociado a una revisión
+      },
+      idUsuario: {
+        type: DataTypes.UUID,
+        allowNull: true, // Puede ser null para archivos de proyecto
+      },
       fechaCreacion: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
@@ -37,19 +50,35 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'Archivo',
+      tableName: "Archivo",
       freezeTableName: true,
       timestamps: false,
     }
   );
 
   Archivo.associate = (models) => {
-    // FK -> Proyecto
+    // FK -> Proyecto (opcional, ya que fotos de perfil no tienen proyecto)
     Archivo.belongsTo(models.Proyecto, {
-      as: 'proyecto',
-      foreignKey: { name: 'idProyecto', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "proyecto",
+      foreignKey: "idProyecto",
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+    });
+
+    // FK -> Revision (opcional)
+    Archivo.belongsTo(models.Revision, {
+      as: "revision",
+      foreignKey: "idRevision",
+      onUpdate: "CASCADE",
+      onDelete: "SET NULL",
+    });
+
+    // FK -> Usuario (opcional, para foto de perfil)
+    Archivo.belongsTo(models.Usuario, {
+      as: "usuario",
+      foreignKey: "idUsuario",
+      onUpdate: "CASCADE",
+      onDelete: "SET NULL",
     });
   };
 

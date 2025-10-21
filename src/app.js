@@ -9,7 +9,10 @@ const responseHandler = require("./middleware/responseHandler");
 
 const app = express();
 
-const whitelist = process.env.CORS_ORIGINS?.split(",") || [];
+const whitelist = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
 
 app.use(
   cors({

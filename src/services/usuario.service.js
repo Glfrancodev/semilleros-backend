@@ -1,4 +1,4 @@
-const { Usuario } = require('../models');
+const { Usuario, Rol, Estudiante, Docente, Archivo } = require("../models");
 
 // Crear un nuevo Usuario
 const crearUsuario = async (datos) => {
@@ -7,12 +7,34 @@ const crearUsuario = async (datos) => {
 
 // Obtener todos los Usuarios
 const obtenerUsuarios = async () => {
-  return await Usuario.findAll();
+  return await Usuario.findAll({
+    include: [
+      { model: Rol, as: "Rol" },
+      { model: Estudiante, as: "Estudiante" },
+      { model: Docente, as: "Docente" },
+      {
+        model: Archivo,
+        as: "fotoPerfil",
+        attributes: ["idArchivo", "url", "formato"],
+      },
+    ],
+  });
 };
 
-// Obtener un Usuario por su ID
+// Obtener un Usuario por su ID (con relaciones)
 const obtenerUsuarioPorId = async (idUsuario) => {
-  return await Usuario.findByPk(idUsuario);
+  return await Usuario.findByPk(idUsuario, {
+    include: [
+      { model: Rol, as: "Rol" },
+      { model: Estudiante, as: "Estudiante" },
+      { model: Docente, as: "Docente" },
+      {
+        model: Archivo,
+        as: "fotoPerfil",
+        attributes: ["idArchivo", "url", "formato"],
+      },
+    ],
+  });
 };
 
 // Actualizar un Usuario
@@ -23,11 +45,14 @@ const actualizarUsuario = async (idUsuario, datos) => {
 // Soft delete de un Usuario (cambiar el estado de 'estaActivo')
 const toggleEstadoUsuario = async (idUsuario) => {
   const usuario = await Usuario.findByPk(idUsuario);
-  if (!usuario) throw new Error('Usuario no encontrado');
+  if (!usuario) throw new Error("Usuario no encontrado");
 
   // Toggle del estado 'estaActivo' (de true a false o viceversa)
   const nuevoEstado = !usuario.estaActivo;
-  return await Usuario.update({ estaActivo: nuevoEstado }, { where: { idUsuario } });
+  return await Usuario.update(
+    { estaActivo: nuevoEstado },
+    { where: { idUsuario } }
+  );
 };
 
 module.exports = {
@@ -35,5 +60,5 @@ module.exports = {
   obtenerUsuarios,
   obtenerUsuarioPorId,
   actualizarUsuario,
-  toggleEstadoUsuario,  // Agregado
+  toggleEstadoUsuario, // Agregado
 };

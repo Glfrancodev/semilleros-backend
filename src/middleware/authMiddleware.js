@@ -1,13 +1,15 @@
-const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+const jwt = require("jsonwebtoken");
+const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
 
 // Middleware para validar el token JWT y asignar el payload a req.user
 const validarToken = (req, res, next) => {
   try {
     // Verificar si el token está presente en los encabezados
-    const token = req.headers.authorization ? req.headers.authorization.split(' ')[1] : null;
+    const token = req.headers.authorization
+      ? req.headers.authorization.split(" ")[1]
+      : null;
     if (!token) {
-      return res.status(401).json({ error: 'Token no proporcionado' });
+      return res.status(401).json({ error: "Token no proporcionado" });
     }
 
     // Verificar y decodificar el token
@@ -16,11 +18,9 @@ const validarToken = (req, res, next) => {
     // Asignar el payload del token a req.user
     req.user = decoded;
 
-    console.log('Decoded JWT payload:', decoded);
-
     next(); // Continuar con la siguiente función middleware o controlador
   } catch (err) {
-    return res.status(401).json({ error: 'Token inválido o expirado' });
+    return res.status(401).json({ error: "Token inválido o expirado" });
   }
 };
 

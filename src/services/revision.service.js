@@ -1,4 +1,4 @@
-const db = require('../models');
+const db = require("../models");
 const Revision = db.Revision;
 const Proyecto = db.Proyecto;
 
@@ -13,6 +13,8 @@ const revisionService = {
         descripcion: data.descripcion,
         fechaLimite: data.fechaLimite,
         contenidoEnviado: data.contenidoEnviado || null,
+        puntaje: data.puntaje || null,
+        comentario: data.comentario || null,
         idProyecto: data.idProyecto,
         fechaCreacion: new Date(),
         fechaActualizacion: new Date(),
@@ -20,7 +22,7 @@ const revisionService = {
 
       return revision;
     } catch (error) {
-      console.error('Error en crearRevision:', error);
+      console.error("Error en crearRevision:", error);
       throw error;
     }
   },
@@ -34,16 +36,21 @@ const revisionService = {
         include: [
           {
             model: Proyecto,
-            as: 'proyecto',
-            attributes: ['idProyecto', 'nombre'],
+            as: "proyecto",
+            attributes: ["idProyecto", "nombre"],
+          },
+          {
+            model: db.Archivo,
+            as: "archivos",
+            attributes: ["idArchivo", "nombre", "formato", "tamano"],
           },
         ],
-        order: [['fechaLimite', 'ASC']],
+        order: [["fechaLimite", "ASC"]],
       });
 
       return revisiones;
     } catch (error) {
-      console.error('Error en obtenerRevisiones:', error);
+      console.error("Error en obtenerRevisiones:", error);
       throw error;
     }
   },
@@ -57,18 +64,22 @@ const revisionService = {
         include: [
           {
             model: Proyecto,
-            as: 'proyecto',
+            as: "proyecto",
+          },
+          {
+            model: db.Archivo,
+            as: "archivos",
           },
         ],
       });
 
       if (!revision) {
-        throw new Error('Revisión no encontrada');
+        throw new Error("Revisión no encontrada");
       }
 
       return revision;
     } catch (error) {
-      console.error('Error en obtenerRevisionPorId:', error);
+      console.error("Error en obtenerRevisionPorId:", error);
       throw error;
     }
   },
@@ -80,12 +91,12 @@ const revisionService = {
     try {
       const revisiones = await Revision.findAll({
         where: { idProyecto },
-        order: [['fechaLimite', 'ASC']],
+        order: [["fechaLimite", "ASC"]],
       });
 
       return revisiones;
     } catch (error) {
-      console.error('Error en obtenerRevisionesPorProyecto:', error);
+      console.error("Error en obtenerRevisionesPorProyecto:", error);
       throw error;
     }
   },
@@ -98,20 +109,26 @@ const revisionService = {
       const revision = await Revision.findByPk(idRevision);
 
       if (!revision) {
-        throw new Error('Revisión no encontrada');
+        throw new Error("Revisión no encontrada");
       }
 
       await revision.update({
         nombre: data.nombre || revision.nombre,
         descripcion: data.descripcion || revision.descripcion,
         fechaLimite: data.fechaLimite || revision.fechaLimite,
-        contenidoEnviado: data.contenidoEnviado !== undefined ? data.contenidoEnviado : revision.contenidoEnviado,
+        contenidoEnviado:
+          data.contenidoEnviado !== undefined
+            ? data.contenidoEnviado
+            : revision.contenidoEnviado,
+        puntaje: data.puntaje !== undefined ? data.puntaje : revision.puntaje,
+        comentario:
+          data.comentario !== undefined ? data.comentario : revision.comentario,
         fechaActualizacion: new Date(),
       });
 
       return revision;
     } catch (error) {
-      console.error('Error en actualizarRevision:', error);
+      console.error("Error en actualizarRevision:", error);
       throw error;
     }
   },
@@ -124,14 +141,14 @@ const revisionService = {
       const revision = await Revision.findByPk(idRevision);
 
       if (!revision) {
-        throw new Error('Revisión no encontrada');
+        throw new Error("Revisión no encontrada");
       }
 
       await revision.destroy();
 
-      return { mensaje: 'Revisión eliminada exitosamente' };
+      return { mensaje: "Revisión eliminada exitosamente" };
     } catch (error) {
-      console.error('Error en eliminarRevision:', error);
+      console.error("Error en eliminarRevision:", error);
       throw error;
     }
   },

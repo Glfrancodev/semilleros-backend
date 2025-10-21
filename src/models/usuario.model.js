@@ -1,8 +1,8 @@
-const bcrypt = require('bcryptjs');
+const bcrypt = require("bcryptjs");
 
 module.exports = (sequelize, DataTypes) => {
   const Usuario = sequelize.define(
-    'Usuario',
+    "Usuario",
     {
       idUsuario: {
         type: DataTypes.UUID,
@@ -42,6 +42,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      bio: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
       contrasena: {
         type: DataTypes.STRING(255),
         allowNull: false,
@@ -61,17 +65,17 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'Usuario',
+      tableName: "Usuario",
       freezeTableName: true,
       timestamps: false,
       defaultScope: {
         // Excluir la contraseña por defecto
-        attributes: { exclude: ['contrasena'] },
+        attributes: { exclude: ["contrasena"] },
       },
       scopes: {
         // Scope específico para login (incluir 'contrasena' en las consultas de login)
         login: {
-          attributes: { include: ['contrasena'] },
+          attributes: { include: ["contrasena"] },
         },
       },
     }
@@ -95,10 +99,34 @@ module.exports = (sequelize, DataTypes) => {
 
   Usuario.associate = (models) => {
     Usuario.belongsTo(models.Rol, {
-      as: 'rol',
-      foreignKey: { name: 'idRol', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "Rol",
+      foreignKey: { name: "idRol", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+    });
+
+    // Relación inversa: Un Usuario puede ser un Estudiante
+    Usuario.hasOne(models.Estudiante, {
+      as: "Estudiante",
+      foreignKey: { name: "idUsuario", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+    });
+
+    // Relación inversa: Un Usuario puede ser un Docente
+    Usuario.hasOne(models.Docente, {
+      as: "Docente",
+      foreignKey: { name: "idUsuario", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+    });
+
+    // Relación 1:1 con Archivo (foto de perfil)
+    Usuario.hasOne(models.Archivo, {
+      as: "fotoPerfil",
+      foreignKey: { name: "idUsuario", allowNull: true },
+      onUpdate: "CASCADE",
+      onDelete: "SET NULL",
     });
   };
 

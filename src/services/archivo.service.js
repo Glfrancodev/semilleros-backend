@@ -21,18 +21,52 @@ const s3Client = new S3Client({
 const archivoService = {
   /**
    * Subir archivo a S3 y guardar en BD
+   * Puede ser para: proyecto, revisión, o foto de perfil (usuario)
    */
-  async subirArchivo(file, idProyecto) {
+  async subirArchivo(file, options = {}) {
     try {
-      // Verificar que el proyecto existe
-      const proyecto = await Proyecto.findByPk(idProyecto);
-      if (!proyecto) {
-        throw new Error("Proyecto no encontrado");
+      const { idProyecto, idRevision, idUsuario } = options;
+
+      // Validar que al menos uno de los IDs esté presente
+      if (!idProyecto && !idUsuario) {
+        throw new Error("Se requiere idProyecto o idUsuario");
+      }
+
+      // Verificar que el proyecto existe (si se proporciona)
+      if (idProyecto) {
+        const proyecto = await Proyecto.findByPk(idProyecto);
+        if (!proyecto) {
+          throw new Error("Proyecto no encontrado");
+        }
+      }
+
+      // Verificar que la revisión existe (si se proporciona)
+      if (idRevision) {
+        const revision = await db.Revision.findByPk(idRevision);
+        if (!revision) {
+          throw new Error("Revisión no encontrada");
+        }
+      }
+
+      // Verificar que el usuario existe (si se proporciona)
+      if (idUsuario) {
+        const usuario = await db.Usuario.findByPk(idUsuario);
+        if (!usuario) {
+          throw new Error("Usuario no encontrado");
+        }
       }
 
       // Generar nombre único para el archivo
       const timestamp = Date.now();
-      const fileName = `proyectos/${idProyecto}/${timestamp}-${file.originalname}`;
+      let fileName;
+
+      if (idUsuario) {
+        // Para fotos de perfil
+        fileName = `usuarios/${idUsuario}/perfil/${timestamp}-${file.originalname}`;
+      } else {
+        // Para archivos de proyecto
+        fileName = `proyectos/${idProyecto}/${timestamp}-${file.originalname}`;
+      }
 
       // Subir a S3
       const uploadParams = {
@@ -59,7 +93,9 @@ const archivoService = {
         formato: formato,
         tamano: parseFloat(tamanoMB.toFixed(2)),
         url: url,
-        idProyecto: idProyecto,
+        idProyecto: idProyecto || null,
+        idRevision: idRevision || null,
+        idUsuario: idUsuario || null,
         fechaCreacion: new Date(),
         fechaActualizacion: new Date(),
       });
@@ -112,6 +148,53 @@ const archivoService = {
   },
 
   /**
+   * Obtener todos los archivos de una revisión con URLs firmadas
+   */
+  async obtenerArchivosPorRevision(idRevision) {
+    try {
+      const archivos = await Archivo.findAll({
+        where: { idRevision },
+        include: [
+          {
+            model: Proyecto,
+            as: "proyecto",
+            attributes: ["idProyecto", "nombre"],
+          },
+        ],
+        order: [["fechaCreacion", "DESC"]],
+      });
+
+      // Generar URLs firmadas para cada archivo
+      const archivosConUrlFirmada = await Promise.all(
+        archivos.map(async (archivo) => {
+          const url = new URL(archivo.url);
+          const key = url.pathname.substring(1);
+
+          const command = new GetObjectCommand({
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: key,
+          });
+
+          const signedUrl = await getSignedUrl(s3Client, command, {
+            expiresIn: 3600,
+          }); // 1 hora
+
+          return {
+            ...archivo.toJSON(),
+            urlFirmada: signedUrl,
+            expiraEn: "1 hora",
+          };
+        })
+      );
+
+      return archivosConUrlFirmada;
+    } catch (error) {
+      console.error("Error en obtenerArchivosPorRevision:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Obtener un archivo específico por ID con URL firmada
    */
   async obtenerArchivoPorId(idArchivo) {
@@ -122,6 +205,11 @@ const archivoService = {
             model: Proyecto,
             as: "proyecto",
             attributes: ["idProyecto", "nombre"],
+          },
+          {
+            model: db.Revision,
+            as: "revision",
+            attributes: ["idRevision", "nombre", "fechaLimite"],
           },
         ],
       });

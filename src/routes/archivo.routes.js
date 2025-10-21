@@ -1,6 +1,6 @@
-const express = require('express');
-const multer = require('multer');
-const archivoController = require('../controllers/archivo.controller');
+const express = require("express");
+const multer = require("multer");
+const archivoController = require("../controllers/archivo.controller");
 
 const router = express.Router();
 
@@ -26,25 +26,37 @@ const upload = multer({
  *   - file: archivo a subir
  *   - idProyecto: UUID del proyecto
  */
-router.post('/upload', upload.single('file'), archivoController.subirArchivo);
+router.post("/upload", upload.single("file"), archivoController.subirArchivo);
 
 /**
  * GET /api/archivos/proyecto/:idProyecto
  * Obtener todos los archivos de un proyecto
  */
-router.get('/proyecto/:idProyecto', archivoController.obtenerArchivosPorProyecto);
+router.get(
+  "/proyecto/:idProyecto",
+  archivoController.obtenerArchivosPorProyecto
+);
+
+/**
+ * GET /api/archivos/revision/:idRevision
+ * Obtener todos los archivos de una revisión
+ */
+router.get(
+  "/revision/:idRevision",
+  archivoController.obtenerArchivosPorRevision
+);
 
 /**
  * GET /api/archivos/:idArchivo
  * Obtener un archivo específico por ID
  */
-router.get('/:idArchivo', archivoController.obtenerArchivoPorId);
+router.get("/:idArchivo", archivoController.obtenerArchivoPorId);
 
 /**
  * DELETE /api/archivos/:idArchivo
  * Eliminar un archivo
  */
-router.delete('/:idArchivo', archivoController.eliminarArchivo);
+router.delete("/:idArchivo", archivoController.eliminarArchivo);
 
 /**
  * GET /api/archivos/:idArchivo/url-firmada
@@ -52,6 +64,6 @@ router.delete('/:idArchivo', archivoController.eliminarArchivo);
  * Query params:
  *   - expiresIn: tiempo de expiración en segundos (default: 3600)
  */
-router.get('/:idArchivo/url-firmada', archivoController.generarUrlFirmada);
+router.get("/:idArchivo/url-firmada", archivoController.generarUrlFirmada);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
   const Revision = sequelize.define(
-    'Revision',
+    "Revision",
     {
       idRevision: {
         type: DataTypes.UUID,
@@ -25,6 +25,15 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.TEXT,
         allowNull: true, // puede estar vacío al principio
       },
+      puntaje: {
+        type: DataTypes.FLOAT,
+        allowNull: true,
+        validate: { min: 0 },
+      },
+      comentario: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
       fechaCreacion: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
@@ -35,7 +44,7 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'Revision',
+      tableName: "Revision",
       freezeTableName: true,
       timestamps: false, // fechas gestionadas manualmente
     }
@@ -44,10 +53,18 @@ module.exports = (sequelize, DataTypes) => {
   Revision.associate = (models) => {
     // FK -> Proyecto
     Revision.belongsTo(models.Proyecto, {
-      as: 'proyecto',
-      foreignKey: { name: 'idProyecto', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "proyecto",
+      foreignKey: { name: "idProyecto", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+    });
+
+    // Una Revisión tiene muchos Archivos
+    Revision.hasMany(models.Archivo, {
+      as: "archivos",
+      foreignKey: { name: "idRevision", allowNull: true },
+      onUpdate: "CASCADE",
+      onDelete: "SET NULL",
     });
   };
 
