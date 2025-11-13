@@ -1,4 +1,5 @@
 const { Usuario, Rol, Estudiante, Docente, Archivo } = require("../models");
+const archivoService = require("./archivo.service");
 
 // Crear un nuevo Usuario
 const crearUsuario = async (datos) => {
@@ -7,7 +8,7 @@ const crearUsuario = async (datos) => {
 
 // Obtener todos los Usuarios
 const obtenerUsuarios = async () => {
-  return await Usuario.findAll({
+  const usuarios = await Usuario.findAll({
     include: [
       { model: Rol, as: "Rol" },
       { model: Estudiante, as: "Estudiante" },
@@ -19,11 +20,38 @@ const obtenerUsuarios = async () => {
       },
     ],
   });
+
+  // Generar URLs firmadas para las fotos de perfil
+  const usuariosConFotosFirmadas = await Promise.all(
+    usuarios.map(async (usuario) => {
+      const usuarioJSON = usuario.toJSON();
+
+      if (usuarioJSON.fotoPerfil && usuarioJSON.fotoPerfil.idArchivo) {
+        try {
+          const { url: urlFirmada } = await archivoService.generarUrlFirmada(
+            usuarioJSON.fotoPerfil.idArchivo,
+            604800 // 7 días en segundos
+          );
+          usuarioJSON.fotoPerfil.url = urlFirmada;
+        } catch (error) {
+          console.error(
+            `Error al generar URL firmada para usuario ${usuarioJSON.idUsuario}:`,
+            error
+          );
+          // Si falla, mantener la URL original (aunque no funcione)
+        }
+      }
+
+      return usuarioJSON;
+    })
+  );
+
+  return usuariosConFotosFirmadas;
 };
 
 // Obtener un Usuario por su ID (con relaciones)
 const obtenerUsuarioPorId = async (idUsuario) => {
-  return await Usuario.findByPk(idUsuario, {
+  const usuario = await Usuario.findByPk(idUsuario, {
     include: [
       { model: Rol, as: "Rol" },
       { model: Estudiante, as: "Estudiante" },
@@ -35,6 +63,28 @@ const obtenerUsuarioPorId = async (idUsuario) => {
       },
     ],
   });
+
+  if (!usuario) return null;
+
+  const usuarioJSON = usuario.toJSON();
+
+  // Generar URL firmada para la foto de perfil
+  if (usuarioJSON.fotoPerfil && usuarioJSON.fotoPerfil.idArchivo) {
+    try {
+      const { url: urlFirmada } = await archivoService.generarUrlFirmada(
+        usuarioJSON.fotoPerfil.idArchivo,
+        604800 // 7 días en segundos
+      );
+      usuarioJSON.fotoPerfil.url = urlFirmada;
+    } catch (error) {
+      console.error(
+        `Error al generar URL firmada para usuario ${usuarioJSON.idUsuario}:`,
+        error
+      );
+    }
+  }
+
+  return usuarioJSON;
 };
 
 // Actualizar un Usuario
