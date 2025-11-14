@@ -9,13 +9,10 @@ const revisionService = {
   async crearRevision(data) {
     try {
       const revision = await Revision.create({
-        nombre: data.nombre,
-        descripcion: data.descripcion,
-        fechaLimite: data.fechaLimite,
-        contenidoEnviado: data.contenidoEnviado || null,
         puntaje: data.puntaje || null,
         comentario: data.comentario || null,
         idProyecto: data.idProyecto,
+        idTarea: data.idTarea,
         fechaCreacion: new Date(),
         fechaActualizacion: new Date(),
       });
@@ -45,7 +42,7 @@ const revisionService = {
             attributes: ["idArchivo", "nombre", "formato", "tamano"],
           },
         ],
-        order: [["fechaLimite", "ASC"]],
+        order: [["fechaCreacion", "DESC"]],
       });
 
       return revisiones;
@@ -91,7 +88,19 @@ const revisionService = {
     try {
       const revisiones = await Revision.findAll({
         where: { idProyecto },
-        order: [["fechaLimite", "ASC"]],
+        include: [
+          {
+            model: db.Tarea,
+            as: "tarea",
+            include: [
+              {
+                model: db.Feria,
+                as: "feria",
+              },
+            ],
+          },
+        ],
+        order: [["fechaCreacion", "DESC"]],
       });
 
       return revisiones;
@@ -113,13 +122,6 @@ const revisionService = {
       }
 
       await revision.update({
-        nombre: data.nombre || revision.nombre,
-        descripcion: data.descripcion || revision.descripcion,
-        fechaLimite: data.fechaLimite || revision.fechaLimite,
-        contenidoEnviado:
-          data.contenidoEnviado !== undefined
-            ? data.contenidoEnviado
-            : revision.contenidoEnviado,
         puntaje: data.puntaje !== undefined ? data.puntaje : revision.puntaje,
         comentario:
           data.comentario !== undefined ? data.comentario : revision.comentario,

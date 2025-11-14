@@ -46,10 +46,6 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.UUID,
         allowNull: true, // Puede ser null para fotos de perfil
       },
-      idRevision: {
-        type: DataTypes.UUID,
-        allowNull: true, // Puede ser null si no está asociado a una revisión
-      },
       fechaCreacion: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
@@ -73,14 +69,6 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "idProyecto",
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
-    });
-
-    // FK -> Revision (opcional)
-    Archivo.belongsTo(models.Revision, {
-      as: "revision",
-      foreignKey: "idRevision",
-      onUpdate: "CASCADE",
-      onDelete: "SET NULL",
     });
   };
 

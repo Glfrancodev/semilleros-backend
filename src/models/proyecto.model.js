@@ -19,12 +19,12 @@ module.exports = (sequelize, DataTypes) => {
       },
       contenido: {
         type: DataTypes.TEXT,
-        allowNull: false,
-        validate: { notEmpty: true },
+        allowNull: true,
       },
       estaAprobado: {
         type: DataTypes.BOOLEAN,
-        defaultValue: false,
+        allowNull: true,
+        defaultValue: null,
       },
       esFinal: {
         type: DataTypes.BOOLEAN,
@@ -56,12 +56,7 @@ module.exports = (sequelize, DataTypes) => {
     });
 
     // FK -> Convocatoria
-    Proyecto.belongsTo(models.Convocatoria, {
-      as: "convocatoria",
-      foreignKey: { name: "idConvocatoria", allowNull: false },
-      onUpdate: "CASCADE",
-      onDelete: "CASCADE",
-    });
+    // Eliminada relación con Convocatoria
 
     // Relación con EstudianteProyecto
     Proyecto.hasMany(models.EstudianteProyecto, {

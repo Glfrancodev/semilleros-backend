@@ -17,16 +17,15 @@ const Grupo = require("./grupo.model")(sequelize, DataTypes);
 const GrupoMateria = require("./grupoMateria.model")(sequelize, DataTypes);
 const Semestre = require("./semestre.model")(sequelize, DataTypes);
 const Materia = require("./materia.model")(sequelize, DataTypes);
-
-// Nuevos modelos añadidos
 const Proyecto = require("./proyecto.model")(sequelize, DataTypes);
 const Categoria = require("./categoria.model")(sequelize, DataTypes);
-const Convocatoria = require("./convocatoria.model")(sequelize, DataTypes);
+const Feria = require("./feria.model")(sequelize, DataTypes);
 const EstudianteProyecto = require("./estudianteProyecto.model")(
   sequelize,
   DataTypes
 );
 const Archivo = require("./archivo.model")(sequelize, DataTypes);
+const Tarea = require("./tarea.model")(sequelize, DataTypes);
 const Revision = require("./revision.model")(sequelize, DataTypes);
 const Calificacion = require("./calificacion.model")(sequelize, DataTypes);
 const TipoCalificacion = require("./tipoCalificacion.model")(
@@ -61,7 +60,7 @@ const db = {
   Materia,
   Proyecto,
   Categoria,
-  Convocatoria,
+  Feria,
   EstudianteProyecto,
   Archivo,
   Revision,
@@ -71,6 +70,7 @@ const db = {
   DocenteProyecto,
   Area,
   AreaCategoria,
+  Tarea,
 };
 
 // Ejecutar asociaciones

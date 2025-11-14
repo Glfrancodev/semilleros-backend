@@ -7,11 +7,11 @@ const revisionController = {
    */
   async crearRevision(req, res) {
     try {
-      const { nombre, descripcion, fechaLimite, idProyecto } = req.body;
+      const { idProyecto, idTarea } = req.body;
 
-      if (!nombre || !descripcion || !fechaLimite || !idProyecto) {
+      if (!idProyecto || !idTarea) {
         return res.validationError(
-          "Los campos nombre, descripcion, fechaLimite e idProyecto son requeridos"
+          "Los campos idProyecto e idTarea son requeridos"
         );
       }
 

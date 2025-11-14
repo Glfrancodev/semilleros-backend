@@ -1,8 +1,8 @@
 module.exports = (sequelize, DataTypes) => {
-  const Convocatoria = sequelize.define(
-    "Convocatoria",
+  const Tarea = sequelize.define(
+    "Tarea",
     {
-      idConvocatoria: {
+      idTarea: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
@@ -16,20 +16,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.TEXT,
         allowNull: true,
       },
-      semestre: {
-        type: DataTypes.INTEGER,
+      fechaLimite: {
+        type: DataTypes.DATE,
         allowNull: false,
-        validate: { min: 1 },
-      },
-      año: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        validate: { min: 2000 },
-      },
-      estaActivo: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: true,
       },
       fechaCreacion: {
         type: DataTypes.DATE,
@@ -39,23 +28,41 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
       },
+      orden: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+        validate: { min: 0 },
+      },
+      idFeria: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
     },
     {
-      tableName: "Convocatoria",
+      tableName: "Tarea",
       freezeTableName: true,
       timestamps: false, // fechas gestionadas manualmente
     }
   );
 
-  Convocatoria.associate = (models) => {
-    // Relación con Proyecto (Convocatoria -> Proyecto)
-    Convocatoria.hasMany(models.Proyecto, {
-      as: "proyectos",
-      foreignKey: { name: "idConvocatoria", allowNull: false },
+  Tarea.associate = (models) => {
+    // Una Tarea tiene muchas Revisiones
+    Tarea.hasMany(models.Revision, {
+      as: "revisiones",
+      foreignKey: { name: "idTarea", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+    });
+
+    // Una Tarea pertenece a una Feria
+    Tarea.belongsTo(models.Feria, {
+      as: "feria",
+      foreignKey: { name: "idFeria", allowNull: false },
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
     });
   };
 
-  return Convocatoria;
+  return Tarea;
 };

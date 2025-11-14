@@ -46,6 +46,37 @@ const archivoService = {
         if (!proyecto) {
           throw new Error("Proyecto no encontrado");
         }
+
+        // Si es un archivo de branding, eliminar el anterior si existe
+        if (tipo === "logo" || tipo === "banner" || tipo === "triptico") {
+          const archivoAnterior = await Archivo.findOne({
+            where: {
+              idProyecto,
+              tipo,
+            },
+            order: [["fechaCreacion", "DESC"]],
+          });
+
+          if (archivoAnterior) {
+            try {
+              // Eliminar de S3
+              const url = new URL(archivoAnterior.url);
+              const key = url.pathname.substring(1);
+              await s3Client.send(
+                new DeleteObjectCommand({
+                  Bucket: process.env.AWS_BUCKET_NAME,
+                  Key: key,
+                })
+              );
+
+              // Eliminar de BD
+              await archivoAnterior.destroy();
+            } catch (error) {
+              console.error("Error al eliminar archivo anterior:", error);
+              // Continuar aunque falle la eliminación
+            }
+          }
+        }
       }
 
       // Verificar que la revisión existe (si se proporciona)
@@ -58,24 +89,32 @@ const archivoService = {
 
       // Generar nombre único para el archivo basado en el tipo
       const timestamp = Date.now();
+
+      // Limpiar nombre del archivo: reemplazar espacios y caracteres especiales
+      const cleanFileName = file.originalname
+        .replace(/\s+/g, "-") // Reemplazar espacios con guiones
+        .replace(/[^a-zA-Z0-9.-]/g, "") // Eliminar caracteres especiales
+        .toLowerCase();
+
       let fileName;
 
       if (tipo === "logo" || tipo === "banner" || tipo === "triptico") {
         // Archivos especiales del proyecto van en carpeta específica
-        fileName = `proyectos/${idProyecto}/${tipo}/${timestamp}-${file.originalname}`;
+        fileName = `proyectos/${idProyecto}/${tipo}/${timestamp}-${cleanFileName}`;
       } else {
         // Archivos de contenido van en carpeta general
-        fileName = `proyectos/${idProyecto || "sin-proyecto"}/${timestamp}-${
-          file.originalname
-        }`;
+        fileName = `proyectos/${
+          idProyecto || "sin-proyecto"
+        }/${timestamp}-${cleanFileName}`;
       }
 
-      // Subir a S3
+      // Subir a S3 con configuración específica para PDFs
       const uploadParams = {
         Bucket: process.env.AWS_BUCKET_NAME,
         Key: fileName,
         Body: file.buffer,
         ContentType: file.mimetype,
+        ContentDisposition: tipo === "triptico" ? "inline" : undefined,
       };
 
       await s3Client.send(new PutObjectCommand(uploadParams));
@@ -101,6 +140,25 @@ const archivoService = {
         fechaCreacion: new Date(),
         fechaActualizacion: new Date(),
       });
+
+      // Si es un archivo de branding (logo, banner, triptico), actualizar el proyecto
+      if (
+        idProyecto &&
+        (tipo === "logo" || tipo === "banner" || tipo === "triptico")
+      ) {
+        const proyecto = await Proyecto.findByPk(idProyecto);
+        if (proyecto) {
+          const campoUrl =
+            tipo === "logo"
+              ? "urlLogo"
+              : tipo === "banner"
+              ? "urlBanner"
+              : "urlTriptico";
+          proyecto[campoUrl] = url;
+          await proyecto.save();
+          console.log(`Proyecto actualizado: ${campoUrl} = ${url}`);
+        }
+      }
 
       return archivo;
     } catch (error) {
@@ -228,10 +286,18 @@ const archivoService = {
           const url = new URL(archivo.url);
           const key = url.pathname.substring(1);
 
-          const command = new GetObjectCommand({
+          const commandParams = {
             Bucket: process.env.AWS_BUCKET_NAME,
             Key: key,
-          });
+          };
+
+          // Para PDFs, especificar Content-Type
+          if (archivo.formato === "pdf" || archivo.tipo === "triptico") {
+            commandParams.ResponseContentType = "application/pdf";
+            commandParams.ResponseContentDisposition = "inline";
+          }
+
+          const command = new GetObjectCommand(commandParams);
 
           const signedUrl = await getSignedUrl(s3Client, command, {
             expiresIn: 3600,
@@ -275,10 +341,18 @@ const archivoService = {
           const url = new URL(archivo.url);
           const key = url.pathname.substring(1);
 
-          const command = new GetObjectCommand({
+          const commandParams = {
             Bucket: process.env.AWS_BUCKET_NAME,
             Key: key,
-          });
+          };
+
+          // Para PDFs, especificar Content-Type
+          if (archivo.formato === "pdf" || archivo.tipo === "triptico") {
+            commandParams.ResponseContentType = "application/pdf";
+            commandParams.ResponseContentDisposition = "inline";
+          }
+
+          const command = new GetObjectCommand(commandParams);
 
           const signedUrl = await getSignedUrl(s3Client, command, {
             expiresIn: 3600,
@@ -327,10 +401,18 @@ const archivoService = {
       const url = new URL(archivo.url);
       const key = url.pathname.substring(1);
 
-      const command = new GetObjectCommand({
+      const commandParams = {
         Bucket: process.env.AWS_BUCKET_NAME,
         Key: key,
-      });
+      };
+
+      // Para PDFs, especificar Content-Type
+      if (archivo.formato === "pdf" || archivo.tipo === "triptico") {
+        commandParams.ResponseContentType = "application/pdf";
+        commandParams.ResponseContentDisposition = "inline";
+      }
+
+      const command = new GetObjectCommand(commandParams);
 
       const signedUrl = await getSignedUrl(s3Client, command, {
         expiresIn: 3600,

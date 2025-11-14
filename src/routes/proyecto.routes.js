@@ -26,6 +26,18 @@ router.get(
 // GET /api/proyectos/:idProyecto - Obtener proyecto por ID
 router.get("/:idProyecto", proyectoController.obtenerProyectoPorId);
 
+// GET /api/proyectos/:idProyecto/integrantes - Obtener integrantes del proyecto
+router.get(
+  "/:idProyecto/integrantes",
+  proyectoController.obtenerIntegrantesProyecto
+);
+
+// GET /api/proyectos/:idProyecto/tareas-organizadas - Obtener tareas organizadas por estado
+router.get(
+  "/:idProyecto/tareas-organizadas",
+  proyectoController.obtenerTareasOrganizadas
+);
+
 // PUT /api/proyectos/:idProyecto - Actualizar proyecto
 router.put("/:idProyecto", proyectoController.actualizarProyecto);
 

@@ -16,7 +16,7 @@ const materiaRoutes = require("./materia.routes"); // Rutas de Materia
 const grupoMateriaRoutes = require("./grupoMateria.routes"); // Rutas de GrupoMateria
 const archivoRoutes = require("./archivo.routes"); // Rutas de Archivo
 const categoriaRoutes = require("./categoria.routes"); // Rutas de Categoria
-const convocatoriaRoutes = require("./convocatoria.routes"); // Rutas de Convocatoria
+const feriaRoutes = require("./feria.routes"); // Rutas de Convocatoria
 const proyectoRoutes = require("./proyecto.routes"); // Rutas de Proyecto
 const estudianteProyectoRoutes = require("./estudianteProyecto.routes"); // Rutas de EstudianteProyecto
 const docenteProyectoRoutes = require("./docenteProyecto.routes"); // Rutas de DocenteProyecto
@@ -27,6 +27,7 @@ const calificacionRoutes = require("./calificacion.routes"); // Rutas de Calific
 const areaRoutes = require("./area.routes"); // Rutas de Area
 const areaCategoriaRoutes = require("./areaCategoria.routes"); // Rutas de AreaCategoria
 const colaboracionRoutes = require("./colaboracion.routes"); // Rutas de Colaboración
+const tareaRoutes = require("./tarea.routes"); // Rutas de Tarea
 
 router.use("/grupo-materias", grupoMateriaRoutes); // 👉 /api/grupo-materias
 
@@ -36,8 +37,8 @@ router.use("/archivos", archivoRoutes); // 👉 /api/archivos
 // Rutas de Categorias
 router.use("/categorias", categoriaRoutes); // 👉 /api/categorias
 
-// Rutas de Convocatorias
-router.use("/convocatorias", convocatoriaRoutes); // 👉 /api/convocatorias
+// Rutas de Ferias
+router.use("/ferias", feriaRoutes); // 👉 /api/ferias
 
 // Rutas de Proyectos
 router.use("/proyectos", proyectoRoutes); // 👉 /api/proyectos
@@ -65,6 +66,9 @@ router.use("/areas", areaRoutes); // 👉 /api/areas
 
 // Rutas de AreaCategoria
 router.use("/area-categorias", areaCategoriaRoutes); // 👉 /api/area-categorias
+
+// Rutas de Tareas
+router.use("/tareas", tareaRoutes); // 👉 /api/tareas
 
 // Ruta para manejar Materias
 router.use("/materias", materiaRoutes); // 👉 /api/materias

@@ -90,8 +90,8 @@ class ColaboracionService {
       throw new Error("No tienes permiso para editar esta revisión");
     }
 
-    // Actualizar contenido
-    revision.contenidoEnviado = contenido;
+    // Actualizar comentario (ya que contenidoEnviado no existe)
+    revision.comentario = contenido;
     revision.fechaActualizacion = new Date();
     await revision.save();
 
@@ -128,9 +128,11 @@ class ColaboracionService {
           as: "archivos",
           attributes: [
             "idArchivo",
-            "nombreArchivo",
-            "urlArchivo",
-            "tipoArchivo",
+            "nombre",
+            "url",
+            "tipo",
+            "formato",
+            "tamano",
           ],
         },
       ],
@@ -180,17 +182,23 @@ class ColaboracionService {
                 },
               ],
             },
+            {
+              model: db.Archivo,
+              as: "archivos",
+              attributes: [
+                "idArchivo",
+                "nombre",
+                "url",
+                "tipo",
+                "formato",
+                "tamano",
+              ],
+            },
           ],
         },
         {
-          model: db.Archivo,
-          as: "archivos",
-          attributes: [
-            "idArchivo",
-            "nombreArchivo",
-            "urlArchivo",
-            "tipoArchivo",
-          ],
+          model: db.Tarea,
+          as: "tarea",
         },
       ],
     });
@@ -210,14 +218,23 @@ class ColaboracionService {
 
     return {
       idRevision: revision.idRevision,
-      nombre: revision.nombre,
-      descripcion: revision.descripcion,
-      contenido: revision.contenidoEnviado,
-      archivos: revision.archivos,
-      fechaLimite: revision.fechaLimite,
-      fechaActualizacion: revision.fechaActualizacion,
       puntaje: revision.puntaje,
       comentario: revision.comentario,
+      fechaCreacion: revision.fechaCreacion,
+      fechaActualizacion: revision.fechaActualizacion,
+      proyecto: {
+        idProyecto: revision.proyecto.idProyecto,
+        nombre: revision.proyecto.nombre,
+        descripcion: revision.proyecto.descripcion,
+        contenido: revision.proyecto.contenido,
+        archivos: revision.proyecto.archivos,
+      },
+      tarea: {
+        idTarea: revision.tarea.idTarea,
+        nombre: revision.tarea.nombre,
+        descripcion: revision.tarea.descripcion,
+        fechaLimite: revision.tarea.fechaLimite,
+      },
     };
   }
 }

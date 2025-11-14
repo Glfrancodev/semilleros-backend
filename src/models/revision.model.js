@@ -7,24 +7,6 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
       },
-      nombre: {
-        type: DataTypes.STRING(100),
-        allowNull: false,
-        validate: { notEmpty: true },
-      },
-      descripcion: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        validate: { notEmpty: true },
-      },
-      fechaLimite: {
-        type: DataTypes.DATE,
-        allowNull: false,
-      },
-      contenidoEnviado: {
-        type: DataTypes.TEXT,
-        allowNull: true, // puede estar vacío al principio
-      },
       puntaje: {
         type: DataTypes.FLOAT,
         allowNull: true,
@@ -33,6 +15,11 @@ module.exports = (sequelize, DataTypes) => {
       comentario: {
         type: DataTypes.TEXT,
         allowNull: true,
+      },
+      revisado: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
       },
       fechaCreacion: {
         type: DataTypes.DATE,
@@ -51,7 +38,7 @@ module.exports = (sequelize, DataTypes) => {
   );
 
   Revision.associate = (models) => {
-    // FK -> Proyecto
+    // FK -> Proyecto (1 a 1)
     Revision.belongsTo(models.Proyecto, {
       as: "proyecto",
       foreignKey: { name: "idProyecto", allowNull: false },
@@ -59,12 +46,12 @@ module.exports = (sequelize, DataTypes) => {
       onDelete: "CASCADE",
     });
 
-    // Una Revisión tiene muchos Archivos
-    Revision.hasMany(models.Archivo, {
-      as: "archivos",
-      foreignKey: { name: "idRevision", allowNull: true },
+    // FK -> Tarea (1 a 1)
+    Revision.belongsTo(models.Tarea, {
+      as: "tarea",
+      foreignKey: { name: "idTarea", allowNull: false },
       onUpdate: "CASCADE",
-      onDelete: "SET NULL",
+      onDelete: "CASCADE",
     });
   };
 

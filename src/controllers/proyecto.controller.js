@@ -7,18 +7,11 @@ const proyectoController = {
    */
   async crearProyecto(req, res) {
     try {
-      const { nombre, descripcion, contenido, idGrupoMateria, idConvocatoria } =
-        req.body;
+      const { nombre, descripcion, contenido, idGrupoMateria } = req.body;
 
-      if (
-        !nombre ||
-        !descripcion ||
-        !contenido ||
-        !idGrupoMateria ||
-        !idConvocatoria
-      ) {
+      if (!nombre || !descripcion || !contenido || !idGrupoMateria) {
         return res.validationError(
-          "Los campos nombre, descripcion, contenido, idGrupoMateria e idConvocatoria son requeridos"
+          "Los campos nombre, descripcion, contenido e idGrupoMateria son requeridos"
         );
       }
 
@@ -175,6 +168,61 @@ const proyectoController = {
       }
 
       return res.error("Error al obtener los proyectos", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+  /**
+   * GET /api/proyectos/:idProyecto/integrantes
+   * Obtener integrantes del proyecto
+   */
+  async obtenerIntegrantesProyecto(req, res) {
+    try {
+      const { idProyecto } = req.params;
+      const integrantes = await proyectoService.obtenerIntegrantesProyecto(
+        idProyecto
+      );
+      return res.success("Integrantes obtenidos exitosamente", {
+        count: integrantes.length,
+        items: integrantes,
+      });
+    } catch (error) {
+      console.error("Error al obtener integrantes:", error);
+
+      if (error.message === "Proyecto no encontrado") {
+        return res.notFound("Proyecto");
+      }
+
+      return res.error("Error al obtener los integrantes", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/proyectos/:idProyecto/tareas-organizadas
+   * Obtener tareas organizadas por estado (En Proceso, Completado, Pendiente)
+   */
+  async obtenerTareasOrganizadas(req, res) {
+    try {
+      const { idProyecto } = req.params;
+      const tareasOrganizadas = await proyectoService.obtenerTareasOrganizadas(
+        idProyecto
+      );
+      return res.success(
+        "Tareas organizadas obtenidas exitosamente",
+        tareasOrganizadas
+      );
+    } catch (error) {
+      console.error("Error al obtener tareas organizadas:", error);
+
+      if (error.message === "Proyecto no encontrado") {
+        return res.notFound("Proyecto");
+      }
+
+      return res.error("Error al obtener las tareas organizadas", 500, {
         code: "FETCH_ERROR",
         details: error.message,
       });
