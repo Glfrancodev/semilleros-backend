@@ -10,8 +10,10 @@ const convocatoriaService = {
     try {
       const convocatoria = await Convocatoria.create({
         nombre: data.nombre,
+        descripcion: data.descripcion,
         semestre: data.semestre,
         año: data.año,
+        estaActivo: data.estaActivo !== undefined ? data.estaActivo : true,
         fechaCreacion: new Date(),
         fechaActualizacion: new Date(),
       });
@@ -81,9 +83,17 @@ const convocatoriaService = {
 
       await convocatoria.update({
         nombre: data.nombre || convocatoria.nombre,
+        descripcion:
+          data.descripcion !== undefined
+            ? data.descripcion
+            : convocatoria.descripcion,
         semestre:
           data.semestre !== undefined ? data.semestre : convocatoria.semestre,
         año: data.año || convocatoria.año,
+        estaActivo:
+          data.estaActivo !== undefined
+            ? data.estaActivo
+            : convocatoria.estaActivo,
         fechaActualizacion: new Date(),
       });
 

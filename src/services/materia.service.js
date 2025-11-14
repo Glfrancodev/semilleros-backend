@@ -1,4 +1,4 @@
-const { Materia } = require('../models');
+const { Materia } = require("../models");
 
 // Crear una nueva Materia
 const crearMateria = async (datos) => {
@@ -34,10 +34,42 @@ const eliminarMateria = async (idMateria) => {
   return await Materia.destroy({ where: { idMateria } });
 };
 
+// Obtener todos los grupos de una materia
+const obtenerGruposPorMateria = async (idMateria) => {
+  const db = require("../models");
+  const GrupoMateria = db.GrupoMateria;
+  const Grupo = db.Grupo;
+
+  const materia = await Materia.findByPk(idMateria);
+
+  if (!materia) {
+    throw new Error("Materia no encontrada");
+  }
+
+  const grupoMaterias = await GrupoMateria.findAll({
+    where: { idMateria },
+    include: [
+      {
+        model: Grupo,
+        as: "grupo",
+        attributes: ["idGrupo", "sigla"],
+      },
+    ],
+  });
+
+  // Retornar grupos con su idGrupoMateria
+  return grupoMaterias.map((gm) => ({
+    idGrupoMateria: gm.idGrupoMateria,
+    idGrupo: gm.grupo.idGrupo,
+    sigla: gm.grupo.sigla,
+  }));
+};
+
 module.exports = {
   crearMateria,
   obtenerMaterias,
   obtenerMateriaPorId,
   actualizarMateria,
   eliminarMateria,
+  obtenerGruposPorMateria,
 };

@@ -110,6 +110,40 @@ const areaService = {
       throw error;
     }
   },
+
+  /**
+   * Obtener todas las categorías disponibles para un área
+   */
+  async obtenerCategoriasPorArea(idArea) {
+    try {
+      const area = await Area.findByPk(idArea);
+
+      if (!area) {
+        throw new Error("Área no encontrada");
+      }
+
+      const areaCategorias = await AreaCategoria.findAll({
+        where: { idArea },
+        include: [
+          {
+            model: db.Categoria,
+            as: "categoria",
+            attributes: ["idCategoria", "nombre"],
+          },
+        ],
+      });
+
+      // Retornar solo las categorías con su idAreaCategoria
+      return areaCategorias.map((ac) => ({
+        idAreaCategoria: ac.idAreaCategoria,
+        idCategoria: ac.categoria.idCategoria,
+        nombre: ac.categoria.nombre,
+      }));
+    } catch (error) {
+      console.error("Error en obtenerCategoriasPorArea:", error);
+      throw error;
+    }
+  },
 };
 
 module.exports = areaService;

@@ -3,14 +3,14 @@ const archivoService = require("../services/archivo.service");
 const archivoController = {
   /**
    * POST /api/archivos/upload
-   * Subir un archivo a S3 vinculado a un proyecto o usuario (foto de perfil)
+   * Subir un archivo a S3 vinculado a un proyecto o revisión
    */
   async subirArchivo(req, res) {
     try {
-      const { idProyecto, idRevision, idUsuario } = req.body;
+      const { idProyecto, idRevision, tipo } = req.body;
 
-      if (!idProyecto && !idUsuario) {
-        return res.validationError("Se requiere idProyecto o idUsuario");
+      if (!idProyecto && !idRevision) {
+        return res.validationError("Se requiere idProyecto o idRevision");
       }
 
       if (!req.file) {
@@ -20,11 +20,32 @@ const archivoController = {
       const archivo = await archivoService.subirArchivo(req.file, {
         idProyecto,
         idRevision,
-        idUsuario,
+        tipo: tipo || "contenido",
       });
       return res.success("Archivo subido exitosamente", archivo, 201);
     } catch (error) {
       console.error("Error al subir archivo:", error);
+      return res.error("Error al subir el archivo", 500, {
+        code: "UPLOAD_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * POST /api/archivos/upload-temporal
+   * Subir un archivo sin vincular a proyecto o revisión
+   */
+  async subirArchivoTemporal(req, res) {
+    try {
+      if (!req.file) {
+        return res.validationError("No se ha proporcionado ningún archivo");
+      }
+
+      const archivo = await archivoService.subirArchivoTemporal(req.file);
+      return res.success("Archivo subido exitosamente", archivo, 201);
+    } catch (error) {
+      console.error("Error al subir archivo temporal:", error);
       return res.error("Error al subir el archivo", 500, {
         code: "UPLOAD_ERROR",
         details: error.message,
@@ -82,6 +103,41 @@ const archivoController = {
     } catch (error) {
       console.error("Error al obtener archivos:", error);
       return res.error("Error al obtener los archivos", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/archivos/proyecto/:idProyecto/tipo/:tipo
+   * Obtener archivo específico por tipo (logo, banner, triptico)
+   */
+  async obtenerArchivoPorTipo(req, res) {
+    try {
+      const { idProyecto, tipo } = req.params;
+
+      if (!idProyecto) {
+        return res.validationError("El idProyecto es requerido");
+      }
+
+      if (!tipo) {
+        return res.validationError("El tipo es requerido");
+      }
+
+      const archivo = await archivoService.obtenerArchivoPorTipo(
+        idProyecto,
+        tipo
+      );
+
+      if (!archivo) {
+        return res.notFound(`Archivo de tipo '${tipo}'`);
+      }
+
+      return res.success("Archivo obtenido exitosamente", archivo);
+    } catch (error) {
+      console.error("Error al obtener archivo por tipo:", error);
+      return res.error("Error al obtener el archivo", 500, {
         code: "FETCH_ERROR",
         details: error.message,
       });

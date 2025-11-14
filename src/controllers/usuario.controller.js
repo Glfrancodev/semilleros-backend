@@ -140,32 +140,34 @@ const actualizarFotoPerfil = async (req, res, next) => {
 
     // Buscar si el usuario ya tiene una foto de perfil
     const usuarioConFoto = await usuarioService.obtenerUsuarioPorId(idUsuario);
+    const idFotoAnterior = usuarioConFoto.idFotoPerfil;
 
-    // Si tiene foto anterior, eliminarla de S3 y BD
-    if (usuarioConFoto.fotoPerfil) {
+    // Subir la nueva foto a S3 y crear registro en BD
+    const archivoNuevo = await archivoService.subirFotoPerfil(
+      req.file,
+      idUsuario
+    );
+
+    // Actualizar el usuario para que apunte a la nueva foto
+    await usuarioService.actualizarUsuario(idUsuario, {
+      idFotoPerfil: archivoNuevo.idArchivo,
+    });
+
+    // Si tenía foto anterior, eliminarla de S3 y BD
+    if (idFotoAnterior) {
       try {
-        await archivoService.eliminarArchivo(
-          usuarioConFoto.fotoPerfil.idArchivo
-        );
-        console.log(
-          "Foto de perfil anterior eliminada:",
-          usuarioConFoto.fotoPerfil.idArchivo
-        );
+        await archivoService.eliminarArchivo(idFotoAnterior);
+        console.log("Foto de perfil anterior eliminada:", idFotoAnterior);
       } catch (deleteError) {
         console.error("Error al eliminar foto anterior:", deleteError);
         // Continuar aunque falle la eliminación de la foto anterior
       }
     }
 
-    // Subir la nueva foto
-    const archivo = await archivoService.subirArchivo(req.file, {
-      idUsuario,
-    });
-
     // Generar URL firmada para la foto (válida por 7 días)
     const { url: urlFirmada, expiresIn } =
       await archivoService.generarUrlFirmada(
-        archivo.idArchivo,
+        archivoNuevo.idArchivo,
         604800 // 7 días en segundos
       );
 
@@ -175,7 +177,7 @@ const actualizarFotoPerfil = async (req, res, next) => {
     return res.success("Foto de perfil actualizada exitosamente", {
       token: nuevoToken,
       fotoPerfil: {
-        ...archivo.toJSON(),
+        ...archivoNuevo.toJSON(),
         urlFirmada,
         expiraEn: `${expiresIn / 86400} días`,
       },

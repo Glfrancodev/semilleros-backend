@@ -1,4 +1,4 @@
-const { GrupoMateria } = require('../models');
+const { GrupoMateria } = require("../models");
 
 // Crear una nueva GrupoMateria
 const crearGrupoMateria = async (datos) => {
@@ -34,10 +34,38 @@ const eliminarGrupoMateria = async (idGrupoMateria) => {
   return await GrupoMateria.destroy({ where: { idGrupoMateria } });
 };
 
+// Buscar GrupoMateria por idGrupo e idMateria
+const buscarGrupoMateriaPorGrupoYMateria = async (idGrupo, idMateria) => {
+  const db = require("../models");
+  const Grupo = db.Grupo;
+  const Materia = db.Materia;
+
+  const grupoMateria = await GrupoMateria.findOne({
+    where: { idGrupo, idMateria },
+    include: [
+      {
+        model: Grupo,
+        as: "grupo",
+      },
+      {
+        model: Materia,
+        as: "materia",
+      },
+    ],
+  });
+
+  if (!grupoMateria) {
+    throw new Error("GrupoMateria no encontrado");
+  }
+
+  return grupoMateria;
+};
+
 module.exports = {
   crearGrupoMateria,
   obtenerGrupoMaterias,
   obtenerGrupoMateriaPorId,
   actualizarGrupoMateria,
   eliminarGrupoMateria,
+  buscarGrupoMateriaPorGrupoYMateria,
 };

@@ -147,6 +147,39 @@ const proyectoController = {
       });
     }
   },
+
+  /**
+   * GET /api/proyectos/mis-proyectos
+   * Obtener los proyectos del estudiante autenticado
+   */
+  async obtenerMisProyectos(req, res) {
+    try {
+      const idUsuario = req.user.idUsuario;
+      const proyectos = await proyectoService.obtenerMisProyectos(idUsuario);
+      return res.success("Mis proyectos obtenidos exitosamente", {
+        count: proyectos.length,
+        items: proyectos,
+      });
+    } catch (error) {
+      console.error("Error al obtener mis proyectos:", error);
+
+      if (error.message === "Estudiante no encontrado") {
+        return res.error(
+          "No se encontró un estudiante asociado a este usuario",
+          404,
+          {
+            code: "STUDENT_NOT_FOUND",
+            details: error.message,
+          }
+        );
+      }
+
+      return res.error("Error al obtener los proyectos", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
 };
 
 module.exports = proyectoController;

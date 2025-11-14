@@ -12,6 +12,10 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: { notEmpty: true },
       },
+      descripcion: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
       semestre: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -21,6 +25,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         validate: { min: 2000 },
+      },
+      estaActivo: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
       },
       fechaCreacion: {
         type: DataTypes.DATE,

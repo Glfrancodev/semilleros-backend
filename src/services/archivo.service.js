@@ -21,15 +21,23 @@ const s3Client = new S3Client({
 const archivoService = {
   /**
    * Subir archivo a S3 y guardar en BD
-   * Puede ser para: proyecto, revisión, o foto de perfil (usuario)
+   * Puede ser para: proyecto o revisión
    */
   async subirArchivo(file, options = {}) {
     try {
-      const { idProyecto, idRevision, idUsuario } = options;
+      const { idProyecto, idRevision, tipo = "contenido" } = options;
+
+      // Validar tipo
+      const tiposValidos = ["logo", "banner", "triptico", "contenido"];
+      if (!tiposValidos.includes(tipo)) {
+        throw new Error(
+          `Tipo de archivo inválido. Debe ser: ${tiposValidos.join(", ")}`
+        );
+      }
 
       // Validar que al menos uno de los IDs esté presente
-      if (!idProyecto && !idUsuario) {
-        throw new Error("Se requiere idProyecto o idUsuario");
+      if (!idProyecto && !idRevision) {
+        throw new Error("Se requiere idProyecto o idRevision");
       }
 
       // Verificar que el proyecto existe (si se proporciona)
@@ -48,24 +56,18 @@ const archivoService = {
         }
       }
 
-      // Verificar que el usuario existe (si se proporciona)
-      if (idUsuario) {
-        const usuario = await db.Usuario.findByPk(idUsuario);
-        if (!usuario) {
-          throw new Error("Usuario no encontrado");
-        }
-      }
-
-      // Generar nombre único para el archivo
+      // Generar nombre único para el archivo basado en el tipo
       const timestamp = Date.now();
       let fileName;
 
-      if (idUsuario) {
-        // Para fotos de perfil
-        fileName = `usuarios/${idUsuario}/perfil/${timestamp}-${file.originalname}`;
+      if (tipo === "logo" || tipo === "banner" || tipo === "triptico") {
+        // Archivos especiales del proyecto van en carpeta específica
+        fileName = `proyectos/${idProyecto}/${tipo}/${timestamp}-${file.originalname}`;
       } else {
-        // Para archivos de proyecto
-        fileName = `proyectos/${idProyecto}/${timestamp}-${file.originalname}`;
+        // Archivos de contenido van en carpeta general
+        fileName = `proyectos/${idProyecto || "sin-proyecto"}/${timestamp}-${
+          file.originalname
+        }`;
       }
 
       // Subir a S3
@@ -93,9 +95,9 @@ const archivoService = {
         formato: formato,
         tamano: parseFloat(tamanoMB.toFixed(2)),
         url: url,
+        tipo: tipo,
         idProyecto: idProyecto || null,
         idRevision: idRevision || null,
-        idUsuario: idUsuario || null,
         fechaCreacion: new Date(),
         fechaActualizacion: new Date(),
       });
@@ -103,6 +105,109 @@ const archivoService = {
       return archivo;
     } catch (error) {
       console.error("Error en subirArchivo:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Subir foto de perfil a S3 y guardar en BD (sin vincular al usuario todavía)
+   */
+  async subirFotoPerfil(file, idUsuario) {
+    try {
+      // Verificar que el usuario existe
+      const usuario = await db.Usuario.findByPk(idUsuario);
+      if (!usuario) {
+        throw new Error("Usuario no encontrado");
+      }
+
+      // Generar nombre único para el archivo
+      const timestamp = Date.now();
+      const fileName = `usuarios/${idUsuario}/perfil/${timestamp}-${file.originalname}`;
+
+      // Subir a S3
+      const uploadParams = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: fileName,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      };
+
+      await s3Client.send(new PutObjectCommand(uploadParams));
+
+      // Construir URL del archivo
+      const url = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+
+      // Extraer formato (extensión)
+      const formato = file.originalname.split(".").pop();
+
+      // Calcular tamaño en MB
+      const tamanoMB = file.size / (1024 * 1024);
+
+      // Guardar en BD (sin vincular todavía - el controller vinculará)
+      const archivo = await Archivo.create({
+        nombre: file.originalname,
+        formato: formato,
+        tamano: parseFloat(tamanoMB.toFixed(2)),
+        url: url,
+        tipo: "perfil",
+        idProyecto: null,
+        idRevision: null,
+        fechaCreacion: new Date(),
+        fechaActualizacion: new Date(),
+      });
+
+      return archivo;
+    } catch (error) {
+      console.error("Error en subirFotoPerfil:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Subir archivo temporal a S3 sin vincular a proyecto o revisión
+   * Útil para subir archivos que se vincularán después
+   */
+  async subirArchivoTemporal(file) {
+    try {
+      // Generar nombre único para el archivo
+      const timestamp = Date.now();
+      const fileName = `temporales/${timestamp}-${file.originalname}`;
+
+      // Subir a S3
+      const uploadParams = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: fileName,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      };
+
+      await s3Client.send(new PutObjectCommand(uploadParams));
+
+      // Construir URL del archivo
+      const url = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+
+      // Extraer formato (extensión)
+      const formato = file.originalname.split(".").pop();
+
+      // Calcular tamaño en MB
+      const tamanoMB = file.size / (1024 * 1024);
+
+      // Guardar en BD (sin vincular a proyecto/revisión)
+      const archivo = await Archivo.create({
+        nombre: file.originalname,
+        formato: formato,
+        tamano: parseFloat(tamanoMB.toFixed(2)),
+        url: url,
+        tipo: "contenido",
+        idProyecto: null,
+        idRevision: null,
+        fechaCreacion: new Date(),
+        fechaActualizacion: new Date(),
+      });
+
+      return archivo;
+    } catch (error) {
+      console.error("Error en subirArchivoTemporal:", error);
       throw error;
     }
   },
@@ -271,6 +376,52 @@ const archivoService = {
       return { mensaje: "Archivo eliminado exitosamente" };
     } catch (error) {
       console.error("Error en eliminarArchivo:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener archivo específico por proyecto y tipo (logo, banner, triptico)
+   */
+  async obtenerArchivoPorTipo(idProyecto, tipo) {
+    try {
+      const tiposValidos = ["logo", "banner", "triptico", "contenido"];
+      if (!tiposValidos.includes(tipo)) {
+        throw new Error(`Tipo inválido. Debe ser: ${tiposValidos.join(", ")}`);
+      }
+
+      const archivo = await Archivo.findOne({
+        where: {
+          idProyecto,
+          tipo,
+        },
+        order: [["fechaCreacion", "DESC"]], // El más reciente
+      });
+
+      if (!archivo) {
+        return null;
+      }
+
+      // Generar URL firmada
+      const url = new URL(archivo.url);
+      const key = url.pathname.substring(1);
+
+      const command = new GetObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: key,
+      });
+
+      const signedUrl = await getSignedUrl(s3Client, command, {
+        expiresIn: 3600,
+      });
+
+      return {
+        ...archivo.toJSON(),
+        urlFirmada: signedUrl,
+        expiraEn: "1 hora",
+      };
+    } catch (error) {
+      console.error("Error en obtenerArchivoPorTipo:", error);
       throw error;
     }
   },

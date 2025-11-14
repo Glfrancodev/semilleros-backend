@@ -51,6 +51,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: { notEmpty: true },
       },
+      // FK hacia Archivo para foto de perfil
+      idFotoPerfil: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
       estaActivo: {
         type: DataTypes.BOOLEAN,
         defaultValue: true,
@@ -121,10 +126,10 @@ module.exports = (sequelize, DataTypes) => {
       onDelete: "CASCADE",
     });
 
-    // Relación 1:1 con Archivo (foto de perfil)
-    Usuario.hasOne(models.Archivo, {
+    // Relación 1:1 con Archivo (foto de perfil) - Usuario tiene la FK
+    Usuario.belongsTo(models.Archivo, {
       as: "fotoPerfil",
-      foreignKey: { name: "idUsuario", allowNull: true },
+      foreignKey: "idFotoPerfil",
       onUpdate: "CASCADE",
       onDelete: "SET NULL",
     });

@@ -190,6 +190,60 @@ const areaCategoriaService = {
       throw error;
     }
   },
+
+  /**
+   * Obtener todas las materias de un AreaCategoria
+   */
+  async obtenerMateriasPorAreaCategoria(idAreaCategoria) {
+    try {
+      const areaCategoria = await AreaCategoria.findByPk(idAreaCategoria);
+
+      if (!areaCategoria) {
+        throw new Error("AreaCategoria no encontrada");
+      }
+
+      const materias = await Materia.findAll({
+        where: { idAreaCategoria },
+        attributes: ["idMateria", "nombre", "sigla"],
+        order: [["nombre", "ASC"]],
+      });
+
+      return materias;
+    } catch (error) {
+      console.error("Error en obtenerMateriasPorAreaCategoria:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Buscar AreaCategoria por idArea e idCategoria
+   */
+  async buscarAreaCategoriaPorAreaYCategoria(idArea, idCategoria) {
+    try {
+      const areaCategoria = await AreaCategoria.findOne({
+        where: { idArea, idCategoria },
+        include: [
+          {
+            model: Area,
+            as: "area",
+          },
+          {
+            model: Categoria,
+            as: "categoria",
+          },
+        ],
+      });
+
+      if (!areaCategoria) {
+        throw new Error("AreaCategoria no encontrada");
+      }
+
+      return areaCategoria;
+    } catch (error) {
+      console.error("Error en buscarAreaCategoriaPorAreaYCategoria:", error);
+      throw error;
+    }
+  },
 };
 
 module.exports = areaCategoriaService;

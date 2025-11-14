@@ -6,6 +6,7 @@ const EstudianteProyecto = db.EstudianteProyecto;
 const DocenteProyecto = db.DocenteProyecto;
 const Archivo = db.Archivo;
 const Revision = db.Revision;
+const archivoService = require("./archivo.service");
 
 const proyectoService = {
   /**
@@ -180,6 +181,104 @@ const proyectoService = {
       return proyectos;
     } catch (error) {
       console.error("Error en obtenerProyectosPorConvocatoria:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener proyectos del estudiante autenticado con datos resumidos
+   */
+  async obtenerMisProyectos(idUsuario) {
+    try {
+      // Primero obtener el estudiante del usuario
+      const estudiante = await db.Estudiante.findOne({
+        where: { idUsuario },
+      });
+
+      if (!estudiante) {
+        throw new Error("Estudiante no encontrado");
+      }
+
+      // Obtener los proyectos del estudiante
+      const estudianteProyectos = await EstudianteProyecto.findAll({
+        where: { idEstudiante: estudiante.idEstudiante },
+        include: [
+          {
+            model: Proyecto,
+            as: "proyecto",
+            include: [
+              {
+                model: GrupoMateria,
+                as: "grupoMateria",
+                include: [
+                  {
+                    model: db.Materia,
+                    as: "materia",
+                    attributes: ["nombre"],
+                  },
+                  {
+                    model: db.Grupo,
+                    as: "grupo",
+                    attributes: ["sigla"],
+                  },
+                  {
+                    model: db.Docente,
+                    as: "docente",
+                    include: [
+                      {
+                        model: db.Usuario,
+                        as: "usuario",
+                        attributes: ["nombre", "apellido"],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      // Mapear los datos a formato simplificado
+      const proyectosFormateados = await Promise.all(
+        estudianteProyectos.map(async (ep) => {
+          const proyecto = ep.proyecto;
+          const grupoMateria = proyecto.grupoMateria;
+
+          // Obtener logo del proyecto (si existe)
+          let urlLogo = null;
+          try {
+            const logo = await archivoService.obtenerArchivoPorTipo(
+              proyecto.idProyecto,
+              "logo"
+            );
+            urlLogo = logo ? logo.urlFirmada : null;
+          } catch (error) {
+            console.log(
+              `No se encontró logo para proyecto ${proyecto.idProyecto}`
+            );
+          }
+
+          return {
+            idProyecto: proyecto.idProyecto,
+            nombre: proyecto.nombre,
+            descripcion: proyecto.descripcion,
+            materia: grupoMateria?.materia?.nombre || "Sin materia",
+            grupo: grupoMateria?.grupo?.sigla || "Sin grupo",
+            nombreDocente: grupoMateria?.docente?.usuario
+              ? `${grupoMateria.docente.usuario.nombre} ${grupoMateria.docente.usuario.apellido}`
+              : "Sin docente",
+            urlLogo: urlLogo,
+            estaAprobado: proyecto.estaAprobado,
+            esFinal: proyecto.esFinal,
+            fechaCreacion: proyecto.fechaCreacion,
+          };
+        })
+      );
+
+      return proyectosFormateados;
+    } catch (error) {
+      console.error("Error en obtenerMisProyectos:", error);
       throw error;
     }
   },

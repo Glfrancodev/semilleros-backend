@@ -26,6 +26,7 @@ const subCalificacionRoutes = require("./subCalificacion.routes"); // Rutas de S
 const calificacionRoutes = require("./calificacion.routes"); // Rutas de Calificacion
 const areaRoutes = require("./area.routes"); // Rutas de Area
 const areaCategoriaRoutes = require("./areaCategoria.routes"); // Rutas de AreaCategoria
+const colaboracionRoutes = require("./colaboracion.routes"); // Rutas de Colaboración
 
 router.use("/grupo-materias", grupoMateriaRoutes); // 👉 /api/grupo-materias
 
@@ -88,5 +89,6 @@ router.use("/permisos", permisoRoutes); // 👉 /api/permisos
 router.use("/rol-permisos", rolPermisoRoutes); // 👉 /api/rol-permisos
 router.use("/usuarios", usuarioRoutes); // 👉 /api/usuarios
 router.use("/seed", dataSeederRoutes); // Asociamos la nueva ruta
+router.use("/colaboracion", colaboracionRoutes); // 👉 /api/colaboracion
 
 module.exports = router;

@@ -85,10 +85,33 @@ const eliminarMateria = async (req, res, next) => {
   }
 };
 
+// Obtener todos los grupos de una materia
+const obtenerGruposPorMateria = async (req, res, next) => {
+  try {
+    const grupos = await materiaService.obtenerGruposPorMateria(req.params.id);
+    return res.success("Grupos obtenidos exitosamente", {
+      count: grupos.length,
+      items: grupos,
+    });
+  } catch (err) {
+    console.error("Error al obtener grupos por materia:", err);
+
+    if (err.message === "Materia no encontrada") {
+      return res.notFound("Materia");
+    }
+
+    return res.error("Error al obtener los grupos", 500, {
+      code: "FETCH_ERROR",
+      details: err.message,
+    });
+  }
+};
+
 module.exports = {
   crearMateria,
   obtenerMaterias,
   obtenerMateriaPorId,
   actualizarMateria,
   eliminarMateria,
+  obtenerGruposPorMateria,
 };

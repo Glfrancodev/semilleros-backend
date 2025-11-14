@@ -21,12 +21,26 @@ const upload = multer({
 // Rutas
 /**
  * POST /api/archivos/upload
- * Subir un archivo a S3
+ * Subir un archivo a S3 vinculado a proyecto o revisión
  * Body (form-data):
  *   - file: archivo a subir
- *   - idProyecto: UUID del proyecto
+ *   - idProyecto: UUID del proyecto (opcional si hay idRevision)
+ *   - idRevision: UUID de la revisión (opcional si hay idProyecto)
+ *   - tipo: tipo de archivo (logo, banner, triptico, contenido)
  */
 router.post("/upload", upload.single("file"), archivoController.subirArchivo);
+
+/**
+ * POST /api/archivos/upload-temporal
+ * Subir un archivo sin vincular a proyecto o revisión
+ * Body (form-data):
+ *   - file: archivo a subir
+ */
+router.post(
+  "/upload-temporal",
+  upload.single("file"),
+  archivoController.subirArchivoTemporal
+);
 
 /**
  * GET /api/archivos/proyecto/:idProyecto
@@ -44,6 +58,15 @@ router.get(
 router.get(
   "/revision/:idRevision",
   archivoController.obtenerArchivosPorRevision
+);
+
+/**
+ * GET /api/archivos/proyecto/:idProyecto/tipo/:tipo
+ * Obtener archivo específico por tipo (logo, banner, triptico, contenido)
+ */
+router.get(
+  "/proyecto/:idProyecto/tipo/:tipo",
+  archivoController.obtenerArchivoPorTipo
 );
 
 /**

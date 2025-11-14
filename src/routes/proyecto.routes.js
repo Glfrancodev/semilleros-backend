@@ -1,10 +1,18 @@
 const express = require("express");
 const proyectoController = require("../controllers/proyecto.controller");
+const { validarToken } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
 // POST /api/proyectos - Crear proyecto
 router.post("/", proyectoController.crearProyecto);
+
+// GET /api/proyectos/mis-proyectos - Obtener proyectos del usuario autenticado (DEBE IR ANTES de /:idProyecto)
+router.get(
+  "/mis-proyectos",
+  validarToken,
+  proyectoController.obtenerMisProyectos
+);
 
 // GET /api/proyectos - Obtener todos los proyectos
 router.get("/", proyectoController.obtenerProyectos);

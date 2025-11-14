@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
   const Evento = sequelize.define(
-    'Evento',  // Nombre del modelo
+    "Evento", // Nombre del modelo
     {
       idEvento: {
         type: DataTypes.UUID,
@@ -22,6 +22,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: { notEmpty: true },
       },
+      estaActivo: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
       fechaCreacion: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
@@ -32,19 +37,19 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'Evento',  // Nombre de la tabla
+      tableName: "Evento", // Nombre de la tabla
       freezeTableName: true,
-      timestamps: false,  // No gestionamos los timestamps automáticamente
+      timestamps: false, // No gestionamos los timestamps automáticamente
     }
   );
 
   Evento.associate = (models) => {
     // Relación con la tabla 'EstudianteEvento' (Evento -> EstudianteEvento)
     Evento.hasMany(models.EstudianteEvento, {
-      as: 'estudiantesEventos',
-      foreignKey: { name: 'idEvento', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "estudiantesEventos",
+      foreignKey: { name: "idEvento", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
   };
 

@@ -27,6 +27,20 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: { notEmpty: true },
       },
+      tipo: {
+        type: DataTypes.ENUM(
+          "logo",
+          "banner",
+          "triptico",
+          "contenido",
+          "perfil"
+        ),
+        allowNull: false,
+        defaultValue: "contenido",
+        validate: {
+          isIn: [["logo", "banner", "triptico", "contenido", "perfil"]],
+        },
+      },
       // Foreign Keys - Declaradas explícitamente para permitir NULL
       idProyecto: {
         type: DataTypes.UUID,
@@ -35,10 +49,6 @@ module.exports = (sequelize, DataTypes) => {
       idRevision: {
         type: DataTypes.UUID,
         allowNull: true, // Puede ser null si no está asociado a una revisión
-      },
-      idUsuario: {
-        type: DataTypes.UUID,
-        allowNull: true, // Puede ser null para archivos de proyecto
       },
       fechaCreacion: {
         type: DataTypes.DATE,
@@ -69,14 +79,6 @@ module.exports = (sequelize, DataTypes) => {
     Archivo.belongsTo(models.Revision, {
       as: "revision",
       foreignKey: "idRevision",
-      onUpdate: "CASCADE",
-      onDelete: "SET NULL",
-    });
-
-    // FK -> Usuario (opcional, para foto de perfil)
-    Archivo.belongsTo(models.Usuario, {
-      as: "usuario",
-      foreignKey: "idUsuario",
       onUpdate: "CASCADE",
       onDelete: "SET NULL",
     });

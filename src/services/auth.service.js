@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { Usuario, Archivo } = require("../models");
+const db = require("../models");
+const { Usuario, Archivo } = db;
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 
@@ -50,6 +51,11 @@ const login = async (correo, contrasena) => {
         as: "fotoPerfil",
         attributes: ["url"],
       },
+      {
+        model: db.Rol,
+        as: "Rol",
+        attributes: ["nombre"],
+      },
     ],
   });
 
@@ -82,7 +88,8 @@ const login = async (correo, contrasena) => {
       nombre: usuario.nombre + " " + usuario.apellido,
       iniciales: iniciales.toUpperCase(),
       fotoPerfil: fotoPerfilFirmada,
-      rol: usuario.idRol,
+      idRol: usuario.idRol,
+      rol: usuario.Rol?.nombre || "Estudiante", // Nombre del rol
     }, // Datos a incluir en el token
     JWT_SECRET,
     { expiresIn: "7d" } // Expira en 7 días (igual que la URL firmada)
@@ -112,6 +119,11 @@ const refreshToken = async (idUsuario) => {
         as: "fotoPerfil",
         attributes: ["url"],
       },
+      {
+        model: db.Rol,
+        as: "Rol",
+        attributes: ["nombre"],
+      },
     ],
   });
 
@@ -136,7 +148,8 @@ const refreshToken = async (idUsuario) => {
       nombre: usuario.nombre + " " + usuario.apellido,
       iniciales: iniciales.toUpperCase(),
       fotoPerfil: fotoPerfilFirmada,
-      rol: usuario.idRol,
+      idRol: usuario.idRol,
+      rol: usuario.Rol?.nombre || "Estudiante", // Nombre del rol
     },
     JWT_SECRET,
     { expiresIn: "7d" } // Expira en 7 días (igual que la URL firmada)

@@ -35,6 +35,25 @@ const obtenerEstudiantes = async (req, res, next) => {
   }
 };
 
+// Obtener el Estudiante del usuario autenticado
+const obtenerEstudianteActual = async (req, res, next) => {
+  try {
+    const estudiante = await estudianteService.obtenerEstudiantePorUsuario(
+      req.user.idUsuario
+    );
+    if (!estudiante) {
+      return res.notFound("Estudiante asociado al usuario");
+    }
+    return res.success("Estudiante obtenido exitosamente", estudiante);
+  } catch (err) {
+    console.error("Error al obtener estudiante actual:", err);
+    return res.error("Error al obtener el estudiante", 500, {
+      code: "FETCH_ERROR",
+      details: err.message,
+    });
+  }
+};
+
 // Obtener un Estudiante por ID
 const obtenerEstudiantePorId = async (req, res, next) => {
   try {
@@ -98,6 +117,7 @@ const eliminarEstudiante = async (req, res, next) => {
 module.exports = {
   crearEstudiante,
   obtenerEstudiantes,
+  obtenerEstudianteActual,
   obtenerEstudiantePorId,
   actualizarEstudiante,
   eliminarEstudiante,

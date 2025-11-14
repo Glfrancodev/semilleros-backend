@@ -1,10 +1,11 @@
-const { Evento } = require('../models');
+const { Evento } = require("../models");
 
 // Crear un nuevo Evento
 const crearEvento = async (datos) => {
   const fechaActual = new Date();
   return await Evento.create({
     ...datos,
+    estaActivo: datos.estaActivo !== undefined ? datos.estaActivo : true,
     fechaCreacion: fechaActual,
     fechaActualizacion: fechaActual,
   });

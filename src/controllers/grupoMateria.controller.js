@@ -97,10 +97,42 @@ const eliminarGrupoMateria = async (req, res, next) => {
   }
 };
 
+// Buscar GrupoMateria por idGrupo e idMateria
+const buscarGrupoMateriaPorGrupoYMateria = async (req, res, next) => {
+  try {
+    const { idGrupo, idMateria } = req.query;
+
+    if (!idGrupo || !idMateria) {
+      return res.validationError(
+        "Los parámetros idGrupo e idMateria son requeridos"
+      );
+    }
+
+    const grupoMateria =
+      await grupoMateriaService.buscarGrupoMateriaPorGrupoYMateria(
+        idGrupo,
+        idMateria
+      );
+    return res.success("GrupoMateria encontrado exitosamente", grupoMateria);
+  } catch (err) {
+    console.error("Error al buscar GrupoMateria:", err);
+
+    if (err.message === "GrupoMateria no encontrado") {
+      return res.notFound("GrupoMateria");
+    }
+
+    return res.error("Error al buscar el GrupoMateria", 500, {
+      code: "FETCH_ERROR",
+      details: err.message,
+    });
+  }
+};
+
 module.exports = {
   crearGrupoMateria,
   obtenerGrupoMaterias,
   obtenerGrupoMateriaPorId,
   actualizarGrupoMateria,
   eliminarGrupoMateria,
+  buscarGrupoMateriaPorGrupoYMateria,
 };

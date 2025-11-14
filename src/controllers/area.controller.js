@@ -112,6 +112,32 @@ const areaController = {
       });
     }
   },
+
+  /**
+   * GET /api/areas/:idArea/categorias
+   * Obtener todas las categorías de un área
+   */
+  async obtenerCategoriasPorArea(req, res) {
+    try {
+      const { idArea } = req.params;
+      const categorias = await areaService.obtenerCategoriasPorArea(idArea);
+      return res.success("Categorías obtenidas exitosamente", {
+        count: categorias.length,
+        items: categorias,
+      });
+    } catch (error) {
+      console.error("Error al obtener categorías por área:", error);
+
+      if (error.message === "Área no encontrada") {
+        return res.notFound("Área");
+      }
+
+      return res.error("Error al obtener las categorías", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
 };
 
 module.exports = areaController;

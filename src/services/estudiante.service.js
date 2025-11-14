@@ -1,4 +1,4 @@
-const { Estudiante, Docente } = require('../models');
+const { Estudiante, Docente } = require("../models");
 
 // Crear un nuevo Estudiante
 const crearEstudiante = async (datos) => {
@@ -10,7 +10,9 @@ const crearEstudiante = async (datos) => {
   });
 
   if (usuarioExistente) {
-    throw new Error('Este usuario ya está asociado a un Docente. No puede ser Estudiante.');
+    throw new Error(
+      "Este usuario ya está asociado a un Docente. No puede ser Estudiante."
+    );
   }
 
   return await Estudiante.create({
@@ -28,6 +30,13 @@ const obtenerEstudiantes = async () => {
 // Obtener un Estudiante por ID
 const obtenerEstudiantePorId = async (idEstudiante) => {
   return await Estudiante.findByPk(idEstudiante);
+};
+
+// Obtener un Estudiante por idUsuario
+const obtenerEstudiantePorUsuario = async (idUsuario) => {
+  return await Estudiante.findOne({
+    where: { idUsuario },
+  });
 };
 
 // Actualizar un Estudiante
@@ -48,6 +57,7 @@ module.exports = {
   crearEstudiante,
   obtenerEstudiantes,
   obtenerEstudiantePorId,
+  obtenerEstudiantePorUsuario,
   actualizarEstudiante,
   eliminarEstudiante,
 };

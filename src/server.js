@@ -1,25 +1,33 @@
 // server.js
-require('dotenv').config();
+require("dotenv").config();
 
-const app = require('./app');
-const db = require('./models'); // ✅ Esta línea importa todos los modelos
+const http = require("http");
+const app = require("./app");
+const db = require("./models");
 const sequelize = db.sequelize;
+const { initializeSocket } = require("./config/socket");
 
 (async () => {
   try {
     await sequelize.authenticate();
-    console.log('✅ Base de datos conectada');
+    console.log("✅ Base de datos conectada");
 
-    await sequelize.sync({ alter: true }); // ✅ ¡Ahora sí va a sincronizar las tablas!
-    console.log('✅ Tablas sincronizadas');
+    await sequelize.sync({ alter: true });
+    console.log("✅ Tablas sincronizadas");
 
     const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
+
+    // Crear servidor HTTP
+    const server = http.createServer(app);
+
+    // Inicializar Socket.io
+    initializeSocket(server);
+
+    server.listen(PORT, () => {
       console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
     });
-
   } catch (err) {
-    console.error('❌ Error crítico:', err);
+    console.error("❌ Error crítico:", err);
     process.exit(1);
   }
 })();

@@ -177,6 +177,72 @@ const areaCategoriaController = {
       });
     }
   },
+
+  /**
+   * GET /api/area-categorias/:idAreaCategoria/materias
+   * Obtener todas las materias de un área-categoría
+   */
+  async obtenerMateriasPorAreaCategoria(req, res) {
+    try {
+      const { idAreaCategoria } = req.params;
+      const materias =
+        await areaCategoriaService.obtenerMateriasPorAreaCategoria(
+          idAreaCategoria
+        );
+      return res.success("Materias obtenidas exitosamente", {
+        count: materias.length,
+        items: materias,
+      });
+    } catch (error) {
+      console.error("Error al obtener materias por área-categoría:", error);
+
+      if (error.message === "AreaCategoria no encontrada") {
+        return res.notFound("AreaCategoria");
+      }
+
+      return res.error("Error al obtener las materias", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/area-categorias/buscar?idArea=xxx&idCategoria=yyy
+   * Buscar área-categoría por idArea e idCategoria
+   */
+  async buscarAreaCategoriaPorAreaYCategoria(req, res) {
+    try {
+      const { idArea, idCategoria } = req.query;
+
+      if (!idArea || !idCategoria) {
+        return res.validationError(
+          "Los parámetros idArea e idCategoria son requeridos"
+        );
+      }
+
+      const areaCategoria =
+        await areaCategoriaService.buscarAreaCategoriaPorAreaYCategoria(
+          idArea,
+          idCategoria
+        );
+      return res.success(
+        "AreaCategoria encontrada exitosamente",
+        areaCategoria
+      );
+    } catch (error) {
+      console.error("Error al buscar área-categoría:", error);
+
+      if (error.message === "AreaCategoria no encontrada") {
+        return res.notFound("AreaCategoria");
+      }
+
+      return res.error("Error al buscar la área-categoría", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
 };
 
 module.exports = areaCategoriaController;

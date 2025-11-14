@@ -5,6 +5,13 @@ const areaCategoriaController = require("../controllers/areaCategoria.controller
 // Rutas CRUD para AreaCategoria
 router.post("/", areaCategoriaController.crearAreaCategoria);
 router.get("/", areaCategoriaController.obtenerAreaCategorias);
+
+// Ruta para buscar AreaCategoria por área y categoría (debe ir antes de /:idAreaCategoria)
+router.get(
+  "/buscar",
+  areaCategoriaController.buscarAreaCategoriaPorAreaYCategoria
+);
+
 router.get(
   "/:idAreaCategoria",
   areaCategoriaController.obtenerAreaCategoriaPorId
@@ -24,6 +31,12 @@ router.put(
 router.delete(
   "/:idAreaCategoria",
   areaCategoriaController.eliminarAreaCategoria
+);
+
+// Ruta para obtener materias por área-categoría
+router.get(
+  "/:idAreaCategoria/materias",
+  areaCategoriaController.obtenerMateriasPorAreaCategoria
 );
 
 module.exports = router;
