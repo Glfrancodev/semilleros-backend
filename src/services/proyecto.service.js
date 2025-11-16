@@ -509,6 +509,40 @@ const proyectoService = {
       throw error;
     }
   },
+
+  /**
+   * Obtener contenido del proyecto para el editor
+   * Incluye el contenido JSON y las imágenes con URLs firmadas
+   */
+  async obtenerContenidoEditor(idProyecto) {
+    try {
+      const proyecto = await Proyecto.findByPk(idProyecto, {
+        attributes: ["idProyecto", "nombre", "contenido"],
+      });
+
+      if (!proyecto) {
+        throw new Error("Proyecto no encontrado");
+      }
+
+      // Obtener imágenes de tipo "contenido" con URLs firmadas
+      const imagenes = await archivoService.obtenerArchivosPorProyecto(
+        idProyecto
+      );
+      const imagenesContenido = imagenes.filter(
+        (img) => img.tipo === "contenido"
+      );
+
+      return {
+        idProyecto: proyecto.idProyecto,
+        nombre: proyecto.nombre,
+        contenido: proyecto.contenido,
+        imagenes: imagenesContenido,
+      };
+    } catch (error) {
+      console.error("Error en obtenerContenidoEditor:", error);
+      throw error;
+    }
+  },
 };
 
 module.exports = proyectoService;

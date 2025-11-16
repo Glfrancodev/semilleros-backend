@@ -22,7 +22,17 @@ const archivoController = {
         idRevision,
         tipo: tipo || "contenido",
       });
-      return res.success("Archivo subido exitosamente", archivo, 201);
+
+      // Generar URL firmada para devolverla junto con los datos del archivo
+      const archivoConUrlFirmada = await archivoService.obtenerArchivoPorId(
+        archivo.idArchivo
+      );
+
+      return res.success(
+        "Archivo subido exitosamente",
+        archivoConUrlFirmada,
+        201
+      );
     } catch (error) {
       console.error("Error al subir archivo:", error);
       return res.error("Error al subir el archivo", 500, {

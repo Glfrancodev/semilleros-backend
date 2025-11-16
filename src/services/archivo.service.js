@@ -385,11 +385,6 @@ const archivoService = {
             as: "proyecto",
             attributes: ["idProyecto", "nombre"],
           },
-          {
-            model: db.Revision,
-            as: "revision",
-            attributes: ["idRevision", "nombre", "fechaLimite"],
-          },
         ],
       });
 

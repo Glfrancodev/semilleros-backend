@@ -228,6 +228,36 @@ const proyectoController = {
       });
     }
   },
+
+  /**
+   * GET /api/proyectos/:idProyecto/contenido-editor
+   * Obtener contenido del proyecto para el editor con imágenes
+   */
+  async obtenerContenidoEditor(req, res) {
+    try {
+      const { idProyecto } = req.params;
+
+      if (!idProyecto) {
+        return res.validationError("El idProyecto es requerido");
+      }
+
+      const contenido = await proyectoService.obtenerContenidoEditor(
+        idProyecto
+      );
+      return res.success("Contenido obtenido exitosamente", contenido);
+    } catch (error) {
+      console.error("Error al obtener contenido del editor:", error);
+
+      if (error.message === "Proyecto no encontrado") {
+        return res.notFound("Proyecto");
+      }
+
+      return res.error("Error al obtener el contenido", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
 };
 
 module.exports = proyectoController;

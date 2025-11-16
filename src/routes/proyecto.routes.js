@@ -38,6 +38,12 @@ router.get(
   proyectoController.obtenerTareasOrganizadas
 );
 
+// GET /api/proyectos/:idProyecto/contenido-editor - Obtener contenido del editor con imágenes
+router.get(
+  "/:idProyecto/contenido-editor",
+  proyectoController.obtenerContenidoEditor
+);
+
 // PUT /api/proyectos/:idProyecto - Actualizar proyecto
 router.put("/:idProyecto", proyectoController.actualizarProyecto);
 
