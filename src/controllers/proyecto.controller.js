@@ -7,11 +7,11 @@ const proyectoController = {
    */
   async crearProyecto(req, res) {
     try {
-      const { nombre, descripcion, contenido, idGrupoMateria } = req.body;
+      const { nombre, descripcion, idGrupoMateria } = req.body;
 
-      if (!nombre || !descripcion || !contenido || !idGrupoMateria) {
+      if (!nombre || !descripcion || !idGrupoMateria) {
         return res.validationError(
-          "Los campos nombre, descripcion, contenido e idGrupoMateria son requeridos"
+          "Los campos nombre, descripcion e idGrupoMateria son requeridos"
         );
       }
 
