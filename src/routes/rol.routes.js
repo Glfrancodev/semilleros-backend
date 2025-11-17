@@ -4,7 +4,7 @@ const rolController = require("../controllers/rol.controller");
 const { verificarPermiso } = require("../middleware/verificarPermiso"); // Importamos el middleware
 
 // Ruta para crear un nuevo rol (solo si el usuario tiene el permiso 'Crear rol')
-router.post("/", verificarPermiso("Crear Rol"), rolController.crearRol); // Aplicamos el middleware de permisos
+router.post("/", rolController.crearRol); // Aplicamos el middleware de permisos
 
 // Rutas para obtener, actualizar y eliminar roles
 router.get("/", rolController.obtenerRoles);
