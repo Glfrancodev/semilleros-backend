@@ -1,4 +1,5 @@
 const estudianteProyectoService = require("../services/estudianteProyecto.service");
+const estudianteService = require("../services/estudiante.service");
 
 const estudianteProyectoController = {
   /**
@@ -148,6 +149,92 @@ const estudianteProyectoController = {
 
       return res.error("Error al eliminar la asignación", 500, {
         code: "DELETE_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * POST /api/estudiante-proyecto/invitacion
+   * Crear una nueva invitación
+   */
+  async crearInvitacion(req, res) {
+    try {
+      const { codigoEstudiante, idProyecto } = req.body;
+
+      if (!codigoEstudiante || !idProyecto) {
+        return res.validationError(
+          "Los campos codigoEstudiante e idProyecto son requeridos"
+        );
+      }
+
+      // Buscar al estudiante por su código
+      const estudiante = await estudianteService.obtenerEstudiantePorCodigo(
+        codigoEstudiante
+      );
+
+      if (!estudiante) {
+        return res.error("Estudiante no encontrado", 404, {
+          code: "STUDENT_NOT_FOUND",
+          details: `No se encontró un estudiante con el código ${codigoEstudiante}`,
+        });
+      }
+
+      const invitacion = await estudianteProyectoService.crearInvitacion({
+        idEstudiante: estudiante.idEstudiante,
+        idProyecto,
+      });
+
+      return res.success("Invitación creada exitosamente", invitacion, 201);
+    } catch (error) {
+      console.error("Error al crear invitación:", error);
+      return res.error("Error al crear la invitación", 500, {
+        code: "CREATE_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/estudiante-proyecto/mis-invitaciones
+   * Obtener las invitaciones del estudiante autenticado
+   */
+  async obtenerMisInvitaciones(req, res) {
+    try {
+      const idUsuario = req.user.idUsuario;
+
+      // Obtener el estudiante asociado al idUsuario
+      const estudiante = await estudianteService.obtenerEstudiantePorUsuario(
+        idUsuario
+      );
+
+      if (!estudiante) {
+        return res.error(
+          "No se encontró un estudiante asociado a este usuario",
+          404,
+          {
+            code: "STUDENT_NOT_FOUND",
+            details: "El idUsuario no tiene un estudiante asociado",
+          }
+        );
+      }
+
+      const invitaciones =
+        await estudianteProyectoService.obtenerMisInvitaciones(
+          estudiante.idEstudiante
+        );
+
+      return res.success(
+        {
+          count: invitaciones.length,
+          items: invitaciones,
+        },
+        "Invitaciones obtenidas exitosamente"
+      );
+    } catch (error) {
+      console.error("Error al obtener invitaciones:", error);
+      return res.error("Error al obtener las invitaciones", 500, {
+        code: "FETCH_ERROR",
         details: error.message,
       });
     }

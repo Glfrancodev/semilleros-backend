@@ -14,6 +14,20 @@ router.get(
   proyectoController.obtenerMisProyectos
 );
 
+// GET /api/proyectos/mis-proyectos-lider - Obtener proyectos donde el estudiante es líder
+router.get(
+  "/mis-proyectos-lider",
+  validarToken,
+  proyectoController.obtenerMisProyectosComoLider
+);
+
+// GET /api/proyectos/mis-proyectos-invitados - Obtener proyectos con invitación pendiente
+router.get(
+  "/mis-proyectos-invitados",
+  validarToken,
+  proyectoController.obtenerMisProyectosInvitados
+);
+
 // GET /api/proyectos - Obtener todos los proyectos
 router.get("/", proyectoController.obtenerProyectos);
 
@@ -42,6 +56,12 @@ router.get(
 router.get(
   "/:idProyecto/contenido-editor",
   proyectoController.obtenerContenidoEditor
+);
+
+// GET /api/proyectos/:idProyecto/invitaciones - Obtener todas las invitaciones enviadas de un proyecto
+router.get(
+  "/:idProyecto/invitaciones",
+  proyectoController.obtenerInvitacionesProyecto
 );
 
 // PUT /api/proyectos/:idProyecto - Actualizar proyecto

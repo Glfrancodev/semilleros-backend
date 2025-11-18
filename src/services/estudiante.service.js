@@ -39,6 +39,13 @@ const obtenerEstudiantePorUsuario = async (idUsuario) => {
   });
 };
 
+// Obtener un Estudiante por código
+const obtenerEstudiantePorCodigo = async (codigoEstudiante) => {
+  return await Estudiante.findOne({
+    where: { codigoEstudiante },
+  });
+};
+
 // Actualizar un Estudiante
 const actualizarEstudiante = async (idEstudiante, datos) => {
   const fechaActual = new Date();
@@ -58,6 +65,7 @@ module.exports = {
   obtenerEstudiantes,
   obtenerEstudiantePorId,
   obtenerEstudiantePorUsuario,
+  obtenerEstudiantePorCodigo,
   actualizarEstudiante,
   eliminarEstudiante,
 };

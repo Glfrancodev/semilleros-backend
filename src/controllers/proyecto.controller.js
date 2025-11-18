@@ -258,6 +258,103 @@ const proyectoController = {
       });
     }
   },
+
+  /**
+   * GET /api/proyectos/mis-proyectos-lider
+   * Obtener proyectos donde el estudiante es líder
+   */
+  async obtenerMisProyectosComoLider(req, res) {
+    try {
+      const idUsuario = req.user.idUsuario;
+      const proyectos = await proyectoService.obtenerProyectosComoLider(
+        idUsuario
+      );
+      return res.success("Proyectos como líder obtenidos exitosamente", {
+        count: proyectos.length,
+        items: proyectos,
+      });
+    } catch (error) {
+      console.error("Error al obtener proyectos como líder:", error);
+
+      if (error.message === "Estudiante no encontrado") {
+        return res.error(
+          "No se encontró un estudiante asociado a este usuario",
+          404,
+          {
+            code: "STUDENT_NOT_FOUND",
+            details: error.message,
+          }
+        );
+      }
+
+      return res.error("Error al obtener los proyectos", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/proyectos/mis-proyectos-invitados
+   * Obtener proyectos donde el estudiante tiene invitación pendiente
+   */
+  async obtenerMisProyectosInvitados(req, res) {
+    try {
+      const idUsuario = req.user.idUsuario;
+      const proyectos =
+        await proyectoService.obtenerProyectosConInvitacionPendiente(idUsuario);
+      return res.success("Proyectos con invitación obtenidos exitosamente", {
+        count: proyectos.length,
+        items: proyectos,
+      });
+    } catch (error) {
+      console.error("Error al obtener proyectos con invitación:", error);
+
+      if (error.message === "Estudiante no encontrado") {
+        return res.error(
+          "No se encontró un estudiante asociado a este usuario",
+          404,
+          {
+            code: "STUDENT_NOT_FOUND",
+            details: error.message,
+          }
+        );
+      }
+
+      return res.error("Error al obtener los proyectos", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/proyectos/:idProyecto/invitaciones
+   * Obtener todas las invitaciones enviadas de un proyecto
+   */
+  async obtenerInvitacionesProyecto(req, res) {
+    try {
+      const { idProyecto } = req.params;
+      const invitaciones = await proyectoService.obtenerInvitacionesProyecto(
+        idProyecto
+      );
+      return res.success("Invitaciones obtenidas exitosamente", {
+        count: invitaciones.length,
+        items: invitaciones,
+      });
+    } catch (error) {
+      console.error("Error al obtener invitaciones del proyecto:", error);
+
+      if (error.message === "Proyecto no encontrado") {
+        return res.notFound("Proyecto");
+      }
+
+      return res.error("Error al obtener las invitaciones", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
 };
 
 module.exports = proyectoController;

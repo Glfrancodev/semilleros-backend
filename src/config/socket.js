@@ -30,10 +30,9 @@ const initializeSocket = (server) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      socket.userId = decoded.id;
-      socket.userEmail = decoded.email;
+      socket.userId = decoded.idUsuario;
+      socket.userEmail = decoded.correo;
       socket.userNombre = decoded.nombre;
-      socket.userApellido = decoded.apellido;
       socket.userIniciales = decoded.iniciales;
       socket.userFoto = decoded.fotoPerfil;
       next();
@@ -43,8 +42,6 @@ const initializeSocket = (server) => {
   });
 
   io.on("connection", (socket) => {
-    console.log(`✅ Usuario conectado: ${socket.userEmail} (${socket.id})`);
-
     // Unirse a un documento (proyecto o revisión)
     socket.on("join-document", ({ documentId, documentType }) => {
       const room = `${documentType}:${documentId}`;
@@ -62,7 +59,6 @@ const initializeSocket = (server) => {
         id: socket.userId,
         email: socket.userEmail,
         nombre: socket.userNombre,
-        apellido: socket.userApellido,
         iniciales: socket.userIniciales,
         foto: socket.userFoto,
         socketId: socket.id,
@@ -76,10 +72,6 @@ const initializeSocket = (server) => {
       );
 
       io.to(room).emit("active-users", activeUsersList);
-
-      console.log(
-        `📄 ${socket.userEmail} se unió a ${room} (${activeUsersList.length} usuarios activos)`
-      );
     });
 
     // Cambios en el contenido markdown
@@ -102,6 +94,7 @@ const initializeSocket = (server) => {
       socket.to(room).emit("cursor-update", {
         userId: socket.userId,
         userEmail: socket.userEmail,
+        userNombre: socket.userNombre,
         userIniciales: socket.userIniciales,
         position,
       });
@@ -121,10 +114,6 @@ const initializeSocket = (server) => {
 
     // Desconexión
     socket.on("disconnect", () => {
-      console.log(
-        `❌ Usuario desconectado: ${socket.userEmail} (${socket.id})`
-      );
-
       if (socket.currentRoom) {
         const room = socket.currentRoom;
         const usersSet = activeUsers.get(room);
@@ -147,10 +136,6 @@ const initializeSocket = (server) => {
 
           // Notificar a los usuarios restantes
           io.to(room).emit("active-users", filteredUsers);
-
-          console.log(
-            `📄 ${socket.userEmail} salió de ${room} (${filteredUsers.length} usuarios activos)`
-          );
         }
       }
     });
@@ -182,12 +167,8 @@ const initializeSocket = (server) => {
       socket.currentRoom = null;
       socket.documentId = null;
       socket.documentType = null;
-
-      console.log(`📄 ${socket.userEmail} salió de ${room}`);
     });
   });
-
-  console.log("🔌 Socket.io inicializado correctamente");
   return io;
 };
 

@@ -95,4 +95,7 @@ router.use("/usuarios", usuarioRoutes); // 👉 /api/usuarios
 router.use("/seed", dataSeederRoutes); // Asociamos la nueva ruta
 router.use("/colaboracion", colaboracionRoutes); // 👉 /api/colaboracion
 
+// Ruta para manejar EstudianteProyecto
+router.use("/api/estudiante-proyecto", estudianteProyectoRoutes);
+
 module.exports = router;

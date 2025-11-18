@@ -175,7 +175,7 @@ const proyectoService = {
         estaAprobado:
           data.estaAprobado !== undefined
             ? data.estaAprobado
-            : proyecto.estaAprobado,
+            : proyecto.estaAprobada,
         esFinal: data.esFinal !== undefined ? data.esFinal : proyecto.esFinal,
         idGrupoMateria: data.idGrupoMateria || proyecto.idGrupoMateria,
         fechaActualizacion: new Date(),
@@ -247,7 +247,11 @@ const proyectoService = {
 
       // Obtener los proyectos del estudiante
       const estudianteProyectos = await EstudianteProyecto.findAll({
-        where: { idEstudiante: estudiante.idEstudiante },
+        where: {
+          idEstudiante: estudiante.idEstudiante,
+          invitacion: true,
+          esLider: true,
+        }, // Filter by invitacion: true
         include: [
           {
             model: Proyecto,
@@ -365,7 +369,7 @@ const proyectoService = {
     }
   },
   /**
-   * Obtener integrantes de un proyecto
+   * Obtener integrantes de un proyecto con invitacion: true
    */
   async obtenerIntegrantesProyecto(idProyecto) {
     try {
@@ -376,7 +380,7 @@ const proyectoService = {
       }
 
       const estudiantesProyecto = await EstudianteProyecto.findAll({
-        where: { idProyecto },
+        where: { idProyecto, invitacion: true }, // Filter by invitacion: true
         include: [
           {
             model: db.Estudiante,
@@ -385,7 +389,7 @@ const proyectoService = {
               {
                 model: db.Usuario,
                 as: "usuario",
-                attributes: ["nombre", "apellido"],
+                attributes: ["idUsuario", "nombre", "apellido"],
               },
             ],
             attributes: ["codigoEstudiante", "idEstudiante"],
@@ -398,11 +402,55 @@ const proyectoService = {
         codigo: ep.estudiante.codigoEstudiante,
         nombreCompleto: `${ep.estudiante.usuario.nombre} ${ep.estudiante.usuario.apellido}`,
         esLider: ep.esLider || false,
+        idUsuario: ep.estudiante.usuario.idUsuario,
       }));
 
       return integrantes;
     } catch (error) {
       console.error("Error en obtenerIntegrantesProyecto:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener todas las invitaciones enviadas de un proyecto
+   */
+  async obtenerInvitacionesProyecto(idProyecto) {
+    try {
+      const proyecto = await Proyecto.findByPk(idProyecto);
+
+      if (!proyecto) {
+        throw new Error("Proyecto no encontrado");
+      }
+
+      const invitaciones = await EstudianteProyecto.findAll({
+        where: { idProyecto, esLider: false }, // Filter by esLider: false
+        include: [
+          {
+            model: db.Estudiante,
+            as: "estudiante",
+            include: [
+              {
+                model: db.Usuario,
+                as: "usuario",
+                attributes: ["idUsuario", "nombre", "apellido"],
+              },
+            ],
+            attributes: ["codigoEstudiante", "idEstudiante"],
+          },
+        ],
+      });
+
+      const formattedInvitaciones = invitaciones.map((inv) => ({
+        idEstudianteProyecto: inv.idEstudianteProyecto,
+        codigo: inv.estudiante.codigoEstudiante,
+        nombreCompleto: `${inv.estudiante.usuario.nombre} ${inv.estudiante.usuario.apellido}`,
+        invitacion: inv.invitacion,
+      }));
+
+      return formattedInvitaciones;
+    } catch (error) {
+      console.error("Error en obtenerInvitacionesProyecto:", error);
       throw error;
     }
   },
@@ -506,6 +554,91 @@ const proyectoService = {
       };
     } catch (error) {
       console.error("Error en obtenerTareasOrganizadas:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener proyectos donde el estudiante tiene invitación pendiente
+   */
+  async obtenerProyectosConInvitacionPendiente(idUsuario) {
+    try {
+      // Obtener el estudiante del usuario
+      const estudiante = await db.Estudiante.findOne({
+        where: { idUsuario },
+      });
+
+      if (!estudiante) {
+        throw new Error("Estudiante no encontrado");
+      }
+
+      // Obtener los proyectos donde el estudiante tiene invitación aceptada y no es líder
+      const estudianteProyectos = await EstudianteProyecto.findAll({
+        where: {
+          idEstudiante: estudiante.idEstudiante,
+          invitacion: true,
+          esLider: false,
+        },
+        include: [
+          {
+            model: Proyecto,
+            as: "proyecto",
+            include: [
+              {
+                model: GrupoMateria,
+                as: "grupoMateria",
+                include: [
+                  {
+                    model: db.Materia,
+                    as: "materia",
+                    attributes: ["nombre"],
+                  },
+                  {
+                    model: db.Grupo,
+                    as: "grupo",
+                    attributes: ["sigla"],
+                  },
+                  {
+                    model: db.Docente,
+                    as: "docente",
+                    include: [
+                      {
+                        model: db.Usuario,
+                        as: "usuario",
+                        attributes: ["nombre", "apellido"],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      // Mapear los datos a formato simplificado
+      const proyectosFormateados = estudianteProyectos.map((ep) => {
+        const proyecto = ep.proyecto;
+        const grupoMateria = proyecto.grupoMateria;
+
+        return {
+          idProyecto: proyecto.idProyecto,
+          nombre: proyecto.nombre,
+          descripcion: proyecto.descripcion,
+          materia: grupoMateria?.materia?.nombre || "Sin materia",
+          grupo: grupoMateria?.grupo?.sigla || "Sin grupo",
+          nombreDocente: grupoMateria?.docente?.usuario
+            ? `${grupoMateria.docente.usuario.nombre} ${grupoMateria.docente.usuario.apellido}`
+            : "Sin docente",
+          estaAprobado: proyecto.estaAprobado,
+          esFinal: proyecto.esFinal,
+          fechaCreacion: proyecto.fechaCreacion,
+        };
+      });
+
+      return proyectosFormateados;
+    } catch (error) {
+      console.error("Error en obtenerProyectosConInvitacionPendiente:", error);
       throw error;
     }
   },

@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
   const EstudianteProyecto = sequelize.define(
-    'EstudianteProyecto',
+    "EstudianteProyecto",
     {
       idEstudianteProyecto: {
         type: DataTypes.UUID,
@@ -10,6 +10,10 @@ module.exports = (sequelize, DataTypes) => {
       esLider: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
+      },
+      invitacion: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: null,
       },
       fechaCreacion: {
         type: DataTypes.DATE,
@@ -21,7 +25,7 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'EstudianteProyecto',
+      tableName: "EstudianteProyecto",
       freezeTableName: true,
       timestamps: false, // fechas gestionadas manualmente
     }
@@ -30,18 +34,18 @@ module.exports = (sequelize, DataTypes) => {
   EstudianteProyecto.associate = (models) => {
     // FK -> Estudiante
     EstudianteProyecto.belongsTo(models.Estudiante, {
-      as: 'estudiante',
-      foreignKey: { name: 'idEstudiante', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "estudiante",
+      foreignKey: { name: "idEstudiante", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
 
     // FK -> Proyecto
     EstudianteProyecto.belongsTo(models.Proyecto, {
-      as: 'proyecto',
-      foreignKey: { name: 'idProyecto', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "proyecto",
+      foreignKey: { name: "idProyecto", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
   };
 

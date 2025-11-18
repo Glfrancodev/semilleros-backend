@@ -1,5 +1,6 @@
 const express = require("express");
 const estudianteProyectoController = require("../controllers/estudianteProyecto.controller");
+const { validarToken } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -31,6 +32,20 @@ router.put(
 router.delete(
   "/:idEstudianteProyecto",
   estudianteProyectoController.eliminarAsignacion
+);
+
+// POST /api/estudiante-proyecto/invitacion - Crear invitación
+router.post(
+  "/invitacion",
+  validarToken,
+  estudianteProyectoController.crearInvitacion
+);
+
+// GET /api/estudiante-proyecto/mis-invitaciones - Obtener mis invitaciones
+router.get(
+  "/mis-invitaciones",
+  validarToken,
+  estudianteProyectoController.obtenerMisInvitaciones
 );
 
 module.exports = router;
