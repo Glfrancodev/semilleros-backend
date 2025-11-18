@@ -18,7 +18,7 @@ const proyectoService = {
         nombre: data.nombre,
         descripcion: data.descripcion,
         contenido: data.contenido,
-        estaAprobado: data.estaAprobado || false,
+        estaAprobado: data.estaAprobado || null,
         esFinal: data.esFinal || false,
         idGrupoMateria: data.idGrupoMateria,
         fechaCreacion: new Date(),
