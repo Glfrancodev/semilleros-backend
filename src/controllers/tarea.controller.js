@@ -111,6 +111,27 @@ const tareaController = {
   },
 
   /**
+   * GET /api/tareas/:idTarea/detalle
+   * Obtener detalle completo de una tarea
+   */
+  async obtenerDetalleTarea(req, res) {
+    try {
+      const { idTarea } = req.params;
+      const detalle = await tareaService.obtenerDetalleTarea(idTarea);
+      return res.success(detalle, "Detalle de tarea obtenido exitosamente");
+    } catch (error) {
+      console.error("Error al obtener detalle de tarea:", error);
+      if (error.message === "Tarea no encontrada") {
+        return res.notFound("Tarea");
+      }
+      return res.error("Error al obtener el detalle de la tarea", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
    * PUT /api/tareas/:idTarea
    * Actualizar una tarea
    */

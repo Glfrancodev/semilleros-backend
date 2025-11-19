@@ -12,6 +12,7 @@ router.get("/orden/cero", tareaController.obtenerTareasOrdenCero);
 router.get("/feria/:idFeria", tareaController.obtenerTareasPorFeria);
 router.get("/", tareaController.obtenerTareas);
 router.get("/:idTarea", tareaController.obtenerTareaPorId);
+router.get("/:idTarea/detalle", tareaController.obtenerDetalleTarea);
 router.put("/:idTarea", tareaController.actualizarTarea);
 router.delete("/:idTarea", tareaController.eliminarTarea);
 

@@ -123,6 +123,69 @@ const tareaService = {
   },
 
   /**
+   * Obtener detalle completo de una tarea
+   */
+  async obtenerDetalleTarea(idTarea) {
+    try {
+      // Obtener la tarea con su feria
+      const tarea = await Tarea.findByPk(idTarea, {
+        include: [
+          {
+            model: Feria,
+            as: "feria",
+            attributes: ["idFeria", "nombre", "semestre", "año"],
+          },
+        ],
+      });
+      if (!tarea) throw new Error("Tarea no encontrada");
+
+      // Obtener revisiones de la tarea con proyecto
+      const revisiones = await Revision.findAll({
+        where: { idTarea },
+        include: [
+          {
+            model: db.Proyecto,
+            as: "proyecto",
+            attributes: ["idProyecto", "nombre", "descripcion"],
+          },
+        ],
+        order: [["fechaCreacion", "ASC"]],
+      });
+
+      // Revisiones enviadas
+      const revisionesEnviadas = revisiones.length;
+      // Revisiones pendientes de revisión
+      const revisionesPendientes = revisiones.filter(
+        (r) => r.revisado === false
+      ).length;
+
+      // Lista de proyectos que enviaron revisión
+      const proyectos = revisiones.map((r) => ({
+        idProyecto: r.proyecto?.idProyecto,
+        nombre: r.proyecto?.nombre,
+        descripcion: r.proyecto?.descripcion,
+        fechaEnvio: r.fechaCreacion,
+        revisado: r.revisado,
+      }));
+
+      return {
+        idTarea: tarea.idTarea,
+        orden: tarea.orden,
+        nombre: tarea.nombre,
+        descripcion: tarea.descripcion,
+        fechaLimite: tarea.fechaLimite,
+        idFeria: tarea.idFeria,
+        revisionesEnviadas,
+        revisionesPendientes,
+        proyectos,
+      };
+    } catch (error) {
+      console.error("Error en obtenerDetalleTarea:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Actualizar una tarea
    */
   async actualizarTarea(idTarea, data) {

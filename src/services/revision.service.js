@@ -125,6 +125,8 @@ const revisionService = {
         puntaje: data.puntaje !== undefined ? data.puntaje : revision.puntaje,
         comentario:
           data.comentario !== undefined ? data.comentario : revision.comentario,
+        revisado:
+          data.revisado !== undefined ? data.revisado : revision.revisado,
         fechaActualizacion: new Date(),
       });
 
