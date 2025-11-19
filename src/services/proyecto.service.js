@@ -19,7 +19,8 @@ const proyectoService = {
         descripcion: data.descripcion,
         contenido: data.contenido,
         estaAprobado: data.estaAprobado || null,
-        esFinal: data.esFinal || false,
+        esFinal: data.esFinal || null,
+        esPublico: data.esPublico ?? false,
         idGrupoMateria: data.idGrupoMateria,
         fechaCreacion: new Date(),
         fechaActualizacion: new Date(),
@@ -138,6 +139,7 @@ const proyectoService = {
         descripcion: proyecto.descripcion,
         estaAprobado: proyecto.estaAprobado,
         esFinal: proyecto.esFinal,
+        esPublico: proyecto.esPublico,
         fechaCreacion: proyecto.fechaCreacion,
         fechaActualizacion: proyecto.fechaActualizacion,
         nombreDocente: proyecto.grupoMateria?.docente?.usuario
@@ -177,6 +179,8 @@ const proyectoService = {
             ? data.estaAprobado
             : proyecto.estaAprobada,
         esFinal: data.esFinal !== undefined ? data.esFinal : proyecto.esFinal,
+        esPublico:
+          data.esPublico !== undefined ? data.esPublico : proyecto.esPublico,
         idGrupoMateria: data.idGrupoMateria || proyecto.idGrupoMateria,
         fechaActualizacion: new Date(),
       });
@@ -321,6 +325,7 @@ const proyectoService = {
             urlLogo: urlLogo,
             estaAprobado: proyecto.estaAprobado,
             esFinal: proyecto.esFinal,
+            esPublico: proyecto.esPublico,
             fechaCreacion: proyecto.fechaCreacion,
           };
         })
@@ -526,7 +531,7 @@ const proyectoService = {
         } else if (revision && !revision.revisado) {
           // Tarea en proceso (la que está siendo revisada)
           if (siguienteTareaEnProceso === null) {
-            siguienteTareaEnProceso = tareaFormateada;
+            siguienteTareaEnProceso = { ...tareaFormateada, enRevision: true };
           }
         } else {
           // Tarea pendiente (no tiene revisión)

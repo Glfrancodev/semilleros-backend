@@ -28,6 +28,10 @@ module.exports = (sequelize, DataTypes) => {
       },
       esFinal: {
         type: DataTypes.BOOLEAN,
+        defaultValue: null,
+      },
+      esPublico: {
+        type: DataTypes.BOOLEAN,
         defaultValue: false,
       },
       fechaCreacion: {
