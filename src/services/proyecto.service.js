@@ -617,24 +617,41 @@ const proyectoService = {
       });
 
       // Mapear los datos a formato simplificado
-      const proyectosFormateados = estudianteProyectos.map((ep) => {
-        const proyecto = ep.proyecto;
-        const grupoMateria = proyecto.grupoMateria;
+      const proyectosFormateados = await Promise.all(
+        estudianteProyectos.map(async (ep) => {
+          const proyecto = ep.proyecto;
+          const grupoMateria = proyecto.grupoMateria;
 
-        return {
-          idProyecto: proyecto.idProyecto,
-          nombre: proyecto.nombre,
-          descripcion: proyecto.descripcion,
-          materia: grupoMateria?.materia?.nombre || "Sin materia",
-          grupo: grupoMateria?.grupo?.sigla || "Sin grupo",
-          nombreDocente: grupoMateria?.docente?.usuario
-            ? `${grupoMateria.docente.usuario.nombre} ${grupoMateria.docente.usuario.apellido}`
-            : "Sin docente",
-          estaAprobado: proyecto.estaAprobado,
-          esFinal: proyecto.esFinal,
-          fechaCreacion: proyecto.fechaCreacion,
-        };
-      });
+          // Obtener logo del proyecto (si existe)
+          let urlLogo = null;
+          try {
+            const logo = await archivoService.obtenerArchivoPorTipo(
+              proyecto.idProyecto,
+              "logo"
+            );
+            urlLogo = logo ? logo.urlFirmada : null;
+          } catch (error) {
+            console.log(
+              `No se encontró logo para proyecto ${proyecto.idProyecto}`
+            );
+          }
+
+          return {
+            idProyecto: proyecto.idProyecto,
+            nombre: proyecto.nombre,
+            descripcion: proyecto.descripcion,
+            urlLogo,
+            materia: grupoMateria?.materia?.nombre || "Sin materia",
+            grupo: grupoMateria?.grupo?.sigla || "Sin grupo",
+            nombreDocente: grupoMateria?.docente?.usuario
+              ? `${grupoMateria.docente.usuario.nombre} ${grupoMateria.docente.usuario.apellido}`
+              : "Sin docente",
+            estaAprobado: proyecto.estaAprobado,
+            esFinal: proyecto.esFinal,
+            fechaCreacion: proyecto.fechaCreacion,
+          };
+        })
+      );
 
       return proyectosFormateados;
     } catch (error) {
