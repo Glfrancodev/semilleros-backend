@@ -122,6 +122,26 @@ const feriaController = {
       });
     }
   },
+
+  /**
+   * GET /api/ferias/resumen-activa
+   * Obtener resumen de la feria activa
+   */
+  async obtenerResumenFeriaActiva(req, res) {
+    try {
+      const resumen = await feriaService.obtenerResumenFeriaActiva();
+      return res.success(
+        "Resumen de feria activa obtenido exitosamente",
+        resumen
+      );
+    } catch (error) {
+      console.error("Error al obtener resumen de feria activa:", error);
+      return res.error("Error al obtener el resumen de la feria activa", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
 };
 
 module.exports = feriaController;
