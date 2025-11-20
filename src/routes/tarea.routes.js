@@ -10,6 +10,7 @@ router.use(validarToken);
 router.post("/", tareaController.crearTarea);
 router.get("/orden/cero", tareaController.obtenerTareasOrdenCero);
 router.get("/feria/:idFeria", tareaController.obtenerTareasPorFeria);
+router.get("/inscripcion", tareaController.obtenerTareasInscripcion);
 router.get("/", tareaController.obtenerTareas);
 router.get("/:idTarea", tareaController.obtenerTareaPorId);
 router.get("/:idTarea/detalle", tareaController.obtenerDetalleTarea);

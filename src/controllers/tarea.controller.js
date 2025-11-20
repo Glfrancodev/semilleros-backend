@@ -67,6 +67,26 @@ const tareaController = {
   },
 
   /**
+   * GET /api/tareas/inscripcion
+   * Obtener tareas de inscripción (alias de orden 0)
+   */
+  async obtenerTareasInscripcion(req, res) {
+    try {
+      const tareas = await tareaService.obtenerTareasOrdenCero();
+      return res.success("Tareas de inscripción obtenidas exitosamente", {
+        count: tareas.length,
+        items: tareas,
+      });
+    } catch (error) {
+      console.error("Error al obtener tareas de inscripción:", error);
+      return res.error("Error al obtener las tareas de inscripción", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
    * GET /api/tareas/feria/:idFeria
    * Obtener tareas por feria
    */
