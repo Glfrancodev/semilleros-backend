@@ -172,13 +172,16 @@ const initializeSocket = (server) => {
         userName,
       });
 
-      // Enviar lista de participantes existentes al nuevo usuario
-      const participants = Array.from(room.values());
+      // Enviar lista de participantes existentes al nuevo usuario (excluyendo a sí mismo)
+      const participants = Array.from(room.values()).filter(
+        (p) => p.id !== socket.id
+      );
       socket.emit("video-participants-list", participants);
 
       console.log(
         `📹 Participantes en sala ${proyectoId}:`,
-        participants.length
+        participants.length,
+        "(enviados al nuevo usuario)"
       );
     });
 
