@@ -187,25 +187,35 @@ const initializeSocket = (server) => {
 
     // Retransmitir oferta WebRTC
     socket.on("video-offer", ({ offer, to }) => {
-      console.log(`📹 Oferta WebRTC de ${socket.id} para ${to}`);
-      socket.to(to).emit("video-offer", {
+      console.log(
+        `📹 Retransmitiendo oferta WebRTC de ${socket.id} para ${to}`
+      );
+      // Usar io.to() en lugar de socket.to() para enviar a un socket específico por ID
+      io.to(to).emit("video-offer", {
         offer,
         from: socket.id,
       });
+      console.log(`📹 Oferta enviada a ${to}`);
     });
 
     // Retransmitir respuesta WebRTC
     socket.on("video-answer", ({ answer, to }) => {
-      console.log(`📹 Respuesta WebRTC de ${socket.id} para ${to}`);
-      socket.to(to).emit("video-answer", {
+      console.log(
+        `📹 Retransmitiendo respuesta WebRTC de ${socket.id} para ${to}`
+      );
+      io.to(to).emit("video-answer", {
         answer,
         from: socket.id,
       });
+      console.log(`📹 Answer enviada a ${to}`);
     });
 
     // Retransmitir candidatos ICE
     socket.on("video-ice-candidate", ({ candidate, to }) => {
-      socket.to(to).emit("video-ice-candidate", {
+      console.log(
+        `📹 Retransmitiendo ICE candidate de ${socket.id} para ${to}`
+      );
+      io.to(to).emit("video-ice-candidate", {
         candidate,
         from: socket.id,
       });
