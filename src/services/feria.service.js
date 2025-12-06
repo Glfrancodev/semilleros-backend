@@ -221,6 +221,115 @@ const feriaService = {
       throw error;
     }
   },
+
+  /**
+   * Obtener la feria actualmente activa con estadísticas
+   */
+  async obtenerFeriaActiva() {
+    try {
+      const { QueryTypes } = require("sequelize");
+
+      // Buscar la feria con estaActivo = true
+      const feria = await Feria.findOne({
+        where: { estaActivo: true },
+        attributes: [
+          "idFeria",
+          "nombre",
+          "semestre",
+          "año",
+          "estaActivo",
+          "fechaCreacion",
+          "fechaActualizacion",
+        ],
+      });
+
+      if (!feria) {
+        return null;
+      }
+
+      // Obtener estadísticas de proyectos relacionados a esta feria
+      // Los proyectos están vinculados a través de: Proyecto -> GrupoMateria -> Materia -> Semestre -> Feria
+      const [estadisticas] = await db.sequelize.query(
+        `
+        SELECT 
+          COUNT(DISTINCT p."idProyecto") as "cantidadProyectosInscritos",
+          COUNT(DISTINCT CASE WHEN p."estaAprobado" IS NULL THEN p."idProyecto" END) as "cantidadProyectosPendientesAprobacion",
+          COUNT(DISTINCT CASE WHEN p."estaAprobado" = true THEN p."idProyecto" END) as "cantidadProyectosAprobados",
+          COUNT(DISTINCT CASE WHEN p."esFinal" = true THEN p."idProyecto" END) as "cantidadProyectosFinales"
+        FROM "Proyecto" p
+        INNER JOIN "GrupoMateria" gm ON p."idGrupoMateria" = gm."idGrupoMateria"
+        INNER JOIN "Materia" m ON gm."idMateria" = m."idMateria"
+        INNER JOIN "Semestre" s ON m."idSemestre" = s."idSemestre"
+        WHERE s."idFeria" = :idFeria
+        `,
+        {
+          replacements: { idFeria: feria.idFeria },
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      const feriaConEstadisticas = {
+        ...feria.toJSON(),
+        cantidadProyectosInscritos:
+          parseInt(estadisticas.cantidadProyectosInscritos) || 0,
+        cantidadProyectosPendientesAprobacion:
+          parseInt(estadisticas.cantidadProyectosPendientesAprobacion) || 0,
+        cantidadProyectosAprobados:
+          parseInt(estadisticas.cantidadProyectosAprobados) || 0,
+        cantidadProyectosFinales:
+          parseInt(estadisticas.cantidadProyectosFinales) || 0,
+      };
+
+      return feriaConEstadisticas;
+    } catch (error) {
+      console.error("Error en obtenerFeriaActiva:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener todas las ferias que NO están activas (historial)
+   */
+  async obtenerFeriasPasadas() {
+    try {
+      const ferias = await Feria.findAll({
+        where: { estaActivo: false },
+        attributes: [
+          "idFeria",
+          "nombre",
+          "semestre",
+          "año",
+          "estaActivo",
+          "fechaCreacion",
+          "fechaActualizacion",
+        ],
+        include: [
+          {
+            model: db.Tarea,
+            as: "tareas",
+            attributes: [
+              "idTarea",
+              "nombre",
+              "descripcion",
+              "fechaLimite",
+              "orden",
+            ],
+            required: false,
+          },
+        ],
+        order: [
+          ["año", "DESC"],
+          ["semestre", "DESC"],
+          ["fechaCreacion", "DESC"],
+        ],
+      });
+
+      return ferias;
+    } catch (error) {
+      console.error("Error en obtenerFeriasPasadas:", error);
+      throw error;
+    }
+  },
 };
 
 module.exports = feriaService;

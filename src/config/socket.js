@@ -6,6 +6,9 @@ let io;
 // Almacenamiento en memoria de usuarios activos por documento
 const activeUsers = new Map(); // key: documentId, value: Set of user objects
 
+// Almacenamiento de salas de videollamadas
+const videoRooms = new Map(); // key: proyectoId, value: Map of participants
+
 const initializeSocket = (server) => {
   io = new Server(server, {
     cors: {
@@ -112,34 +115,6 @@ const initializeSocket = (server) => {
       });
     });
 
-    // Desconexión
-    socket.on("disconnect", () => {
-      if (socket.currentRoom) {
-        const room = socket.currentRoom;
-        const usersSet = activeUsers.get(room);
-
-        if (usersSet) {
-          // Remover usuario por socketId
-          const usersArray = Array.from(usersSet).map((u) => JSON.parse(u));
-          const filteredUsers = usersArray.filter(
-            (u) => u.socketId !== socket.id
-          );
-
-          if (filteredUsers.length === 0) {
-            activeUsers.delete(room);
-          } else {
-            activeUsers.set(
-              room,
-              new Set(filteredUsers.map((u) => JSON.stringify(u)))
-            );
-          }
-
-          // Notificar a los usuarios restantes
-          io.to(room).emit("active-users", filteredUsers);
-        }
-      }
-    });
-
     // Salir de un documento manualmente
     socket.on("leave-document", ({ documentId, documentType }) => {
       const room = `${documentType}:${documentId}`;
@@ -167,6 +142,131 @@ const initializeSocket = (server) => {
       socket.currentRoom = null;
       socket.documentId = null;
       socket.documentType = null;
+    });
+
+    // ========== VIDEOLLAMADAS ==========
+
+    // Usuario se une a una sala de videollamada
+    socket.on("join-video-room", ({ proyectoId, userName }) => {
+      console.log(
+        `📹 ${userName} (${socket.id}) se unió a videollamada del proyecto ${proyectoId}`
+      );
+
+      const videoRoom = `video:${proyectoId}`;
+      socket.join(videoRoom);
+      socket.videoRoom = videoRoom;
+      socket.videoProyectoId = proyectoId;
+
+      // Obtener o crear sala de video
+      const room = videoRooms.get(proyectoId) || new Map();
+      room.set(socket.id, {
+        id: socket.id,
+        name: userName,
+        userId: socket.userId,
+      });
+      videoRooms.set(proyectoId, room);
+
+      // Notificar a otros usuarios en la sala de video
+      socket.to(videoRoom).emit("user-joined-video", {
+        userId: socket.id,
+        userName,
+      });
+
+      // Enviar lista de participantes existentes al nuevo usuario
+      const participants = Array.from(room.values());
+      socket.emit("video-participants-list", participants);
+
+      console.log(
+        `📹 Participantes en sala ${proyectoId}:`,
+        participants.length
+      );
+    });
+
+    // Retransmitir oferta WebRTC
+    socket.on("video-offer", ({ offer, to }) => {
+      console.log(`📹 Oferta WebRTC de ${socket.id} para ${to}`);
+      socket.to(to).emit("video-offer", {
+        offer,
+        from: socket.id,
+      });
+    });
+
+    // Retransmitir respuesta WebRTC
+    socket.on("video-answer", ({ answer, to }) => {
+      console.log(`📹 Respuesta WebRTC de ${socket.id} para ${to}`);
+      socket.to(to).emit("video-answer", {
+        answer,
+        from: socket.id,
+      });
+    });
+
+    // Retransmitir candidatos ICE
+    socket.on("video-ice-candidate", ({ candidate, to }) => {
+      socket.to(to).emit("video-ice-candidate", {
+        candidate,
+        from: socket.id,
+      });
+    });
+
+    // Usuario sale de la sala de video
+    socket.on("leave-video-room", ({ proyectoId }) => {
+      handleVideoUserLeave(socket, proyectoId);
+    });
+
+    // Función auxiliar para manejar salida de videollamada
+    function handleVideoUserLeave(socket, proyectoId) {
+      const room = videoRooms.get(proyectoId);
+      if (room) {
+        room.delete(socket.id);
+        if (room.size === 0) {
+          videoRooms.delete(proyectoId);
+          console.log(
+            `📹 Sala de video ${proyectoId} eliminada (sin participantes)`
+          );
+        }
+      }
+
+      const videoRoom = `video:${proyectoId}`;
+      socket.to(videoRoom).emit("user-left-video", {
+        userId: socket.id,
+      });
+
+      socket.leave(videoRoom);
+      console.log(
+        `📹 Usuario ${socket.id} salió de videollamada ${proyectoId}`
+      );
+    }
+
+    // Desconexión - maneja ambos tipos de salas
+    socket.on("disconnect", () => {
+      // Manejar desconexión de documento colaborativo
+      if (socket.currentRoom) {
+        const room = socket.currentRoom;
+        const usersSet = activeUsers.get(room);
+
+        if (usersSet) {
+          const usersArray = Array.from(usersSet).map((u) => JSON.parse(u));
+          const filteredUsers = usersArray.filter(
+            (u) => u.socketId !== socket.id
+          );
+
+          if (filteredUsers.length === 0) {
+            activeUsers.delete(room);
+          } else {
+            activeUsers.set(
+              room,
+              new Set(filteredUsers.map((u) => JSON.stringify(u)))
+            );
+          }
+
+          io.to(room).emit("active-users", filteredUsers);
+        }
+      }
+
+      // Manejar desconexión de videollamada
+      if (socket.videoProyectoId) {
+        handleVideoUserLeave(socket, socket.videoProyectoId);
+      }
     });
   });
   return io;

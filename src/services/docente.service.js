@@ -1,4 +1,4 @@
-const { Docente, Estudiante } = require('../models');
+const { Docente, Estudiante } = require("../models");
 
 // Crear un nuevo Docente
 const crearDocente = async (datos) => {
@@ -10,7 +10,9 @@ const crearDocente = async (datos) => {
   });
 
   if (usuarioExistente) {
-    throw new Error('Este usuario ya está asociado a un Estudiante. No puede ser Docente.');
+    throw new Error(
+      "Este usuario ya está asociado a un Estudiante. No puede ser Docente."
+    );
   }
 
   return await Docente.create({
@@ -22,7 +24,18 @@ const crearDocente = async (datos) => {
 
 // Obtener todos los Docentes
 const obtenerDocentes = async () => {
-  return await Docente.findAll();
+  const db = require("../models");
+  const { Usuario } = db;
+
+  return await Docente.findAll({
+    include: [
+      {
+        model: Usuario,
+        as: "usuario",
+        attributes: ["idUsuario", "nombre", "correo"],
+      },
+    ],
+  });
 };
 
 // Obtener un Docente por ID

@@ -1,18 +1,92 @@
-const { Materia } = require("../models");
+const { Materia, Grupo, GrupoMateria, sequelize } = require("../models");
 
-// Crear una nueva Materia
+// Crear una nueva Materia con sus grupos
 const crearMateria = async (datos) => {
-  const fechaActual = new Date();
-  return await Materia.create({
-    ...datos,
-    fechaCreacion: fechaActual,
-    fechaActualizacion: fechaActual,
-  });
+  const transaction = await sequelize.transaction();
+
+  try {
+    const fechaActual = new Date();
+    const { grupos, ...materiaData } = datos;
+
+    // 1. Crear la materia
+    const materia = await Materia.create(
+      {
+        ...materiaData,
+        fechaCreacion: fechaActual,
+        fechaActualizacion: fechaActual,
+      },
+      { transaction }
+    );
+
+    // 2. Si hay grupos, crearlos y vincularlos
+    if (grupos && Array.isArray(grupos) && grupos.length > 0) {
+      for (const grupoData of grupos) {
+        // Crear el grupo
+        const grupo = await Grupo.create(
+          {
+            sigla: grupoData.sigla,
+            fechaCreacion: fechaActual,
+            fechaActualizacion: fechaActual,
+          },
+          { transaction }
+        );
+
+        // Crear el GrupoMateria (relación entre grupo, materia y docente)
+        await GrupoMateria.create(
+          {
+            idGrupo: grupo.idGrupo,
+            idMateria: materia.idMateria,
+            idDocente: grupoData.idDocente,
+            fechaCreacion: fechaActual,
+            fechaActualizacion: fechaActual,
+          },
+          { transaction }
+        );
+      }
+    }
+
+    await transaction.commit();
+
+    // Retornar la materia creada con sus grupos
+    return await obtenerMateriaPorId(materia.idMateria);
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 };
 
 // Obtener todas las Materias
 const obtenerMaterias = async () => {
-  return await Materia.findAll();
+  const db = require("../models");
+  const { Docente, Usuario } = db;
+
+  return await Materia.findAll({
+    include: [
+      {
+        model: db.GrupoMateria,
+        as: "grupoMaterias",
+        include: [
+          {
+            model: db.Grupo,
+            as: "grupo",
+            attributes: ["idGrupo", "sigla"],
+          },
+          {
+            model: Docente,
+            as: "docente",
+            attributes: ["idDocente", "codigoDocente"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "correo"],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
 };
 
 // Obtener una Materia por ID

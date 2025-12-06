@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
   const Semestre = sequelize.define(
-    'Semestre',
+    "Semestre",
     {
       idSemestre: {
         type: DataTypes.UUID,
@@ -22,9 +22,9 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'Semestre',
+      tableName: "Semestre",
       freezeTableName: true,
-      timestamps: false,  // No gestionamos los timestamps automáticamente
+      timestamps: false, // No gestionamos los timestamps automáticamente
     }
   );
 
@@ -32,10 +32,18 @@ module.exports = (sequelize, DataTypes) => {
   Semestre.associate = (models) => {
     // Relación con la tabla Materia (Semestre -> Materia)
     Semestre.hasMany(models.Materia, {
-      as: 'materias',
-      foreignKey: { name: 'idSemestre', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "materias",
+      foreignKey: { name: "idSemestre", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+    });
+
+    // Relación con la tabla Feria (Semestre -> Feria)
+    Semestre.belongsTo(models.Feria, {
+      as: "feria",
+      foreignKey: { name: "idFeria", allowNull: true },
+      onUpdate: "CASCADE",
+      onDelete: "SET NULL",
     });
   };
 

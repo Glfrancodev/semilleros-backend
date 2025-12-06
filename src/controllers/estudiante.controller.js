@@ -114,6 +114,28 @@ const eliminarEstudiante = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/estudiantes/leaderboard
+ * Obtiene el top de estudiantes destacados según su desempeño
+ */
+const obtenerLeaderboard = async (req, res) => {
+  try {
+    const limite = Math.min(parseInt(req.query.limite) || 10, 50);
+    const leaderboard = await estudianteService.obtenerLeaderboard(limite);
+
+    return res.success("Leaderboard obtenido exitosamente", {
+      count: leaderboard.length,
+      items: leaderboard,
+    });
+  } catch (err) {
+    console.error("Error al obtener leaderboard:", err);
+    return res.error("Error al obtener el leaderboard de estudiantes", 500, {
+      code: "FETCH_ERROR",
+      details: err.message,
+    });
+  }
+};
+
 module.exports = {
   crearEstudiante,
   obtenerEstudiantes,
@@ -121,4 +143,5 @@ module.exports = {
   obtenerEstudiantePorId,
   actualizarEstudiante,
   eliminarEstudiante,
+  obtenerLeaderboard,
 };

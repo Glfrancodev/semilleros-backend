@@ -31,6 +31,13 @@ const areaService = {
           {
             model: AreaCategoria,
             as: "areaCategorias",
+            include: [
+              {
+                model: db.Categoria,
+                as: "categoria",
+                attributes: ["idCategoria", "nombre"],
+              },
+            ],
           },
         ],
         order: [["nombre", "ASC"]],
@@ -53,6 +60,13 @@ const areaService = {
           {
             model: AreaCategoria,
             as: "areaCategorias",
+            include: [
+              {
+                model: db.Categoria,
+                as: "categoria",
+                attributes: ["idCategoria", "nombre"],
+              },
+            ],
           },
         ],
       });

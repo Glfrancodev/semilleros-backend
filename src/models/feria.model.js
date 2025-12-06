@@ -51,6 +51,14 @@ module.exports = (sequelize, DataTypes) => {
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
     });
+
+    // Relación con Semestre (Feria -> Semestre)
+    Feria.hasMany(models.Semestre, {
+      as: "semestres",
+      foreignKey: { name: "idFeria", allowNull: true },
+      onUpdate: "CASCADE",
+      onDelete: "SET NULL",
+    });
   };
 
   return Feria;

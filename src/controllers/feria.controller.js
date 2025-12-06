@@ -142,6 +142,49 @@ const feriaController = {
       });
     }
   },
+
+  /**
+   * GET /api/ferias/activa
+   * Obtener la feria actualmente activa con estadísticas
+   */
+  async obtenerFeriaActiva(req, res) {
+    try {
+      const feria = await feriaService.obtenerFeriaActiva();
+
+      if (!feria) {
+        return res.success("No hay feria activa", null);
+      }
+
+      return res.success("Feria activa obtenida exitosamente", feria);
+    } catch (error) {
+      console.error("Error al obtener feria activa:", error);
+      return res.error("Error al obtener la feria activa", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/ferias/pasadas
+   * Obtener todas las ferias que NO están activas (historial)
+   */
+  async obtenerFeriasPasadas(req, res) {
+    try {
+      const ferias = await feriaService.obtenerFeriasPasadas();
+
+      return res.success("Ferias pasadas obtenidas exitosamente", {
+        count: ferias.length,
+        items: ferias,
+      });
+    } catch (error) {
+      console.error("Error al obtener ferias pasadas:", error);
+      return res.error("Error al obtener ferias pasadas", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
 };
 
 module.exports = feriaController;

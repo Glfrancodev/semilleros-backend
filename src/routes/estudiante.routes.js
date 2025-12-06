@@ -3,6 +3,9 @@ const router = express.Router();
 const estudianteController = require("../controllers/estudiante.controller");
 const { validarToken } = require("../middleware/authMiddleware");
 
+// Ruta para obtener el leaderboard de estudiantes
+router.get("/leaderboard", estudianteController.obtenerLeaderboard);
+
 // Ruta para crear un nuevo Estudiante
 router.post("/", estudianteController.crearEstudiante);
 

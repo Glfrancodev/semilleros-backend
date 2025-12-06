@@ -6,6 +6,12 @@ const router = express.Router();
 // GET /api/ferias/resumen-activa - Resumen de la feria activa
 router.get("/resumen-activa", feriaController.obtenerResumenFeriaActiva);
 
+// GET /api/ferias/activa - Obtener feria activa con estadísticas
+router.get("/activa", feriaController.obtenerFeriaActiva);
+
+// GET /api/ferias/pasadas - Obtener ferias pasadas (inactivas)
+router.get("/pasadas", feriaController.obtenerFeriasPasadas);
+
 // POST /api/ferias - Crear feria
 router.post("/", feriaController.crearFeria);
 
