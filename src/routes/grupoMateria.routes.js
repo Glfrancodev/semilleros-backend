@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const grupoMateriaController = require("../controllers/grupoMateria.controller");
+const { validarToken } = require("../middleware/authMiddleware");
 
 // Ruta para crear una nueva GrupoMateria
 router.post("/", grupoMateriaController.crearGrupoMateria);
@@ -12,6 +13,13 @@ router.get("/", grupoMateriaController.obtenerGrupoMaterias);
 router.get(
   "/buscar",
   grupoMateriaController.buscarGrupoMateriaPorGrupoYMateria
+);
+
+// Ruta para obtener materias del docente autenticado (debe ir antes de /:id)
+router.get(
+  "/mis-materias",
+  validarToken,
+  grupoMateriaController.obtenerMateriasDelDocente
 );
 
 // Ruta para obtener un GrupoMateria por su ID

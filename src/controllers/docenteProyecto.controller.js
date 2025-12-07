@@ -175,6 +175,40 @@ const docenteProyectoController = {
       });
     }
   },
+
+  /**
+   * GET /api/docente-proyectos/mis-proyectos-jurado
+   * Obtener proyectos donde el docente autenticado es jurado de la feria activa
+   */
+  async obtenerMisProyectosComoJurado(req, res) {
+    try {
+      const idUsuario = req.user.idUsuario;
+      const proyectos =
+        await docenteProyectoService.obtenerMisProyectosComoJurado(idUsuario);
+      return res.success("Proyectos como jurado obtenidos exitosamente", {
+        count: proyectos.length,
+        items: proyectos,
+      });
+    } catch (error) {
+      console.error("Error al obtener proyectos como jurado:", error);
+
+      if (error.message === "Docente no encontrado") {
+        return res.error(
+          "No se encontró un docente asociado a este usuario",
+          404,
+          {
+            code: "TEACHER_NOT_FOUND",
+            details: error.message,
+          }
+        );
+      }
+
+      return res.error("Error al obtener los proyectos", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
 };
 
 module.exports = docenteProyectoController;

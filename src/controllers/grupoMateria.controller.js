@@ -128,6 +128,25 @@ const buscarGrupoMateriaPorGrupoYMateria = async (req, res, next) => {
   }
 };
 
+// Obtener materias del docente autenticado
+const obtenerMateriasDelDocente = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.idUsuario;
+    console.log("🔍 Buscando materias para idUsuario:", idUsuario);
+    const materias = await grupoMateriaService.obtenerMateriasDelDocente(
+      idUsuario
+    );
+    console.log("✅ Materias encontradas:", materias.length);
+    return res.success("Materias del docente obtenidas exitosamente", materias);
+  } catch (err) {
+    console.error("Error al obtener materias del docente:", err);
+    return res.error("Error al obtener las materias del docente", 500, {
+      code: "FETCH_ERROR",
+      details: err.message,
+    });
+  }
+};
+
 module.exports = {
   crearGrupoMateria,
   obtenerGrupoMaterias,
@@ -135,4 +154,5 @@ module.exports = {
   actualizarGrupoMateria,
   eliminarGrupoMateria,
   buscarGrupoMateriaPorGrupoYMateria,
+  obtenerMateriasDelDocente,
 };

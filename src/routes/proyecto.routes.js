@@ -34,6 +34,13 @@ router.get(
   proyectoController.obtenerProyectosAprobadosFeria
 );
 
+// GET /api/proyectos/materia/:idMateria - Obtener proyectos por materia (DEBE IR ANTES de /:idProyecto)
+router.get(
+  "/materia/:idMateria",
+  validarToken,
+  proyectoController.obtenerProyectosPorMateria
+);
+
 // GET /api/proyectos - Obtener todos los proyectos
 router.get("/", proyectoController.obtenerProyectos);
 
@@ -68,6 +75,13 @@ router.get(
 router.get(
   "/:idProyecto/invitaciones",
   proyectoController.obtenerInvitacionesProyecto
+);
+
+// PUT /api/proyectos/:idProyecto/aprobar-tutor - Actualizar aprobación del tutor
+router.put(
+  "/:idProyecto/aprobar-tutor",
+  validarToken,
+  proyectoController.actualizarProyectoAprobadoTutor
 );
 
 // PUT /api/proyectos/:idProyecto - Actualizar proyecto

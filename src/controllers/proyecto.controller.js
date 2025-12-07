@@ -383,6 +383,64 @@ const proyectoController = {
       );
     }
   },
+
+  /**
+   * GET /api/proyectos/materia/:idMateria
+   * Obtener proyectos de una materia específica
+   */
+  async obtenerProyectosPorMateria(req, res) {
+    try {
+      const { idMateria } = req.params;
+      const proyectos = await proyectoService.obtenerProyectosPorMateria(
+        idMateria
+      );
+
+      return res.success("Proyectos de la materia obtenidos exitosamente", {
+        count: proyectos.length,
+        items: proyectos,
+      });
+    } catch (error) {
+      console.error("Error al obtener proyectos por materia:", error);
+      return res.error("Error al obtener los proyectos de la materia", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * PUT /api/proyectos/:idProyecto/aprobar-tutor
+   * Actualizar el estado de aprobación del tutor
+   */
+  async actualizarProyectoAprobadoTutor(req, res) {
+    try {
+      const { idProyecto } = req.params;
+      const { estaAprobado } = req.body;
+
+      if (typeof estaAprobado !== "boolean") {
+        return res.validationError(
+          "El campo estaAprobado es requerido y debe ser un valor booleano"
+        );
+      }
+
+      await proyectoService.actualizarProyectoAprobadoTutor(
+        idProyecto,
+        estaAprobado
+      );
+
+      return res.success(
+        estaAprobado
+          ? "Proyecto aprobado exitosamente"
+          : "Proyecto rechazado exitosamente"
+      );
+    } catch (error) {
+      console.error("Error al actualizar aprobación del tutor:", error);
+      return res.error("Error al actualizar la aprobación del tutor", 500, {
+        code: "UPDATE_ERROR",
+        details: error.message,
+      });
+    }
+  },
 };
 
 module.exports = proyectoController;

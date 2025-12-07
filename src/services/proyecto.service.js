@@ -138,6 +138,7 @@ const proyectoService = {
         nombre: proyecto.nombre,
         descripcion: proyecto.descripcion,
         estaAprobado: proyecto.estaAprobado,
+        estaAprobadoTutor: proyecto.estaAprobadoTutor,
         esFinal: proyecto.esFinal,
         esPublico: proyecto.esPublico,
         fechaCreacion: proyecto.fechaCreacion,
@@ -783,6 +784,85 @@ const proyectoService = {
       }));
     } catch (error) {
       console.error("Error en obtenerProyectosAprobadosFeria:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener proyectos de una materia específica (solo de feria activa)
+   */
+  async obtenerProyectosPorMateria(idMateria) {
+    try {
+      const { QueryTypes } = require("sequelize");
+
+      // Obtener feria activa
+      const feriaActiva = await db.Feria.findOne({
+        where: { estaActivo: true },
+      });
+
+      if (!feriaActiva) {
+        // Si no hay feria activa, retornar array vacío
+        return [];
+      }
+
+      const proyectos = await db.sequelize.query(
+        `
+        SELECT DISTINCT
+          p."idProyecto",
+          p.nombre,
+          p.descripcion,
+          p."estaAprobadoTutor",
+          p."fechaCreacion",
+          gm."idGrupoMateria",
+          g.sigla as "grupoSigla"
+        FROM "Proyecto" p
+        INNER JOIN "GrupoMateria" gm ON gm."idGrupoMateria" = p."idGrupoMateria"
+        INNER JOIN "Materia" m ON m."idMateria" = gm."idMateria"
+        INNER JOIN "Grupo" g ON g."idGrupo" = gm."idGrupo"
+        INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+        INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+        INNER JOIN "Feria" f ON f."idFeria" = t."idFeria"
+        WHERE m."idMateria" = :idMateria
+          AND f."idFeria" = :idFeria
+        ORDER BY p."fechaCreacion" DESC
+        `,
+        {
+          replacements: {
+            idMateria,
+            idFeria: feriaActiva.idFeria,
+          },
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      return proyectos;
+    } catch (error) {
+      console.error("Error en obtenerProyectosPorMateria:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Actualizar el estado de aprobación del tutor (estaAprobadoTutor)
+   * @param {string} idProyecto - ID del proyecto
+   * @param {boolean} estaAprobado - true para aprobar, false para rechazar
+   * @returns {Promise<void>}
+   */
+  async actualizarProyectoAprobadoTutor(idProyecto, estaAprobado) {
+    try {
+      const proyecto = await Proyecto.findByPk(idProyecto);
+
+      if (!proyecto) {
+        throw new Error("Proyecto no encontrado");
+      }
+
+      await proyecto.update({
+        estaAprobadoTutor: estaAprobado,
+      });
+
+      return;
+    } catch (error) {
+      console.error("Error en actualizarProyectoAprobadoTutor:", error);
       throw error;
     }
   },

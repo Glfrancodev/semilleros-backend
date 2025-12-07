@@ -26,6 +26,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         defaultValue: null,
       },
+      estaAprobadoTutor: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true,
+        defaultValue: null,
+      },
       esFinal: {
         type: DataTypes.BOOLEAN,
         defaultValue: null,
