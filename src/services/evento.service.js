@@ -1,4 +1,5 @@
-const { Evento } = require("../models");
+const { Evento, EstudianteEvento, Estudiante } = require("../models");
+const { Sequelize } = require("sequelize");
 
 // Crear un nuevo Evento
 const crearEvento = async (datos) => {
@@ -13,7 +14,27 @@ const crearEvento = async (datos) => {
 
 // Obtener todos los Eventos
 const obtenerEventos = async () => {
-  return await Evento.findAll();
+  return await Evento.findAll({
+    attributes: {
+      include: [
+        [
+          Sequelize.literal(`(
+            SELECT COUNT(*)
+            FROM "EstudianteEvento"
+            WHERE "EstudianteEvento"."idEvento" = "Evento"."idEvento"
+          )`),
+          "cantidadInscritos",
+        ],
+        [
+          Sequelize.literal(`(
+            SELECT COUNT(*)
+            FROM "Estudiante"
+          )`),
+          "totalEstudiantes",
+        ],
+      ],
+    },
+  });
 };
 
 // Obtener un Evento por ID

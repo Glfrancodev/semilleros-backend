@@ -1,4 +1,4 @@
-const db = require('../models');
+const db = require("../models");
 const Categoria = db.Categoria;
 const Proyecto = db.Proyecto;
 
@@ -16,7 +16,7 @@ const categoriaService = {
 
       return categoria;
     } catch (error) {
-      console.error('Error en crearCategoria:', error);
+      console.error("Error en crearCategoria:", error);
       throw error;
     }
   },
@@ -27,12 +27,25 @@ const categoriaService = {
   async obtenerCategorias() {
     try {
       const categorias = await Categoria.findAll({
-        order: [['nombre', 'ASC']],
+        order: [["nombre", "ASC"]],
+        include: [
+          {
+            model: db.AreaCategoria,
+            as: "areaCategorias",
+            include: [
+              {
+                model: db.Materia,
+                as: "materias",
+                attributes: ["idMateria", "sigla", "nombre"],
+              },
+            ],
+          },
+        ],
       });
 
       return categorias;
     } catch (error) {
-      console.error('Error en obtenerCategorias:', error);
+      console.error("Error en obtenerCategorias:", error);
       throw error;
     }
   },
@@ -46,19 +59,19 @@ const categoriaService = {
         include: [
           {
             model: Proyecto,
-            as: 'proyectos',
-            attributes: ['idProyecto', 'nombre'],
+            as: "proyectos",
+            attributes: ["idProyecto", "nombre"],
           },
         ],
       });
 
       if (!categoria) {
-        throw new Error('Categoría no encontrada');
+        throw new Error("Categoría no encontrada");
       }
 
       return categoria;
     } catch (error) {
-      console.error('Error en obtenerCategoriaPorId:', error);
+      console.error("Error en obtenerCategoriaPorId:", error);
       throw error;
     }
   },
@@ -71,7 +84,7 @@ const categoriaService = {
       const categoria = await Categoria.findByPk(idCategoria);
 
       if (!categoria) {
-        throw new Error('Categoría no encontrada');
+        throw new Error("Categoría no encontrada");
       }
 
       await categoria.update({
@@ -81,7 +94,7 @@ const categoriaService = {
 
       return categoria;
     } catch (error) {
-      console.error('Error en actualizarCategoria:', error);
+      console.error("Error en actualizarCategoria:", error);
       throw error;
     }
   },
@@ -94,14 +107,14 @@ const categoriaService = {
       const categoria = await Categoria.findByPk(idCategoria);
 
       if (!categoria) {
-        throw new Error('Categoría no encontrada');
+        throw new Error("Categoría no encontrada");
       }
 
       await categoria.destroy();
 
-      return { mensaje: 'Categoría eliminada exitosamente' };
+      return { mensaje: "Categoría eliminada exitosamente" };
     } catch (error) {
-      console.error('Error en eliminarCategoria:', error);
+      console.error("Error en eliminarCategoria:", error);
       throw error;
     }
   },

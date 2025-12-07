@@ -30,9 +30,17 @@ const feriaService = {
   async obtenerFerias() {
     try {
       const ferias = await Feria.findAll({
+        include: [
+          {
+            model: db.Tarea,
+            as: "tareas",
+            attributes: ["idTarea", "nombre", "descripcion", "fechaLimite", "orden"],
+          },
+        ],
         order: [
           ["año", "DESC"],
           ["semestre", "ASC"],
+          [{ model: db.Tarea, as: "tareas" }, "orden", "ASC"],
         ],
       });
 
@@ -63,13 +71,16 @@ const feriaService = {
    * Actualizar una feria
    */
   async actualizarFeria(idFeria, data) {
+    const transaction = await db.sequelize.transaction();
     try {
-      const feria = await Feria.findByPk(idFeria);
+      const feria = await Feria.findByPk(idFeria, { transaction });
 
       if (!feria) {
+        await transaction.rollback();
         throw new Error("Feria no encontrada");
       }
 
+      // 1. Actualizar datos básicos
       await feria.update({
         nombre: data.nombre || feria.nombre,
         semestre: data.semestre !== undefined ? data.semestre : feria.semestre,
@@ -77,10 +88,62 @@ const feriaService = {
         estaActivo:
           data.estaActivo !== undefined ? data.estaActivo : feria.estaActivo,
         fechaActualizacion: new Date(),
-      });
+      }, { transaction });
 
+      // 2. Actualizar Tareas si se proporcionan
+      if (data.tareas && Array.isArray(data.tareas)) {
+        const tareasActuales = await db.Tarea.findAll({
+          where: { idFeria },
+          transaction
+        });
+
+        const mapTareasActuales = new Map(); // orden -> Tarea
+        tareasActuales.forEach(t => mapTareasActuales.set(t.orden, t));
+
+        const ordenesNuevos = new Set(data.tareas.map(t => t.orden));
+
+        // A. Identificar tareas a ELIMINAR (están en actuales pero no en nuevos)
+        for (const [orden, tarea] of mapTareasActuales) {
+          if (!ordenesNuevos.has(orden)) {
+            if (orden === 0) {
+              // PROTECCIÓN: No permitir eliminar tarea 0
+              console.warn("Intento de eliminar tarea 0 bloqueado.");
+              continue; 
+            }
+            await tarea.destroy({ transaction });
+          }
+        }
+
+        // B. Identificar tareas a CREAR o ACTUALIZAR
+        for (const tareaData of data.tareas) {
+          if (mapTareasActuales.has(tareaData.orden)) {
+            // ACTUALIZAR
+            const tareaExistente = mapTareasActuales.get(tareaData.orden);
+            await tareaExistente.update({
+              nombre: tareaData.nombre,
+              descripcion: tareaData.descripcion,
+              fechaLimite: tareaData.fechaLimite,
+              fechaActualizacion: new Date()
+            }, { transaction });
+          } else {
+            // CREAR
+            await db.Tarea.create({
+              idFeria: idFeria,
+              nombre: tareaData.nombre,
+              descripcion: tareaData.descripcion,
+              fechaLimite: tareaData.fechaLimite,
+              orden: tareaData.orden,
+              fechaCreacion: new Date(),
+              fechaActualizacion: new Date()
+            }, { transaction });
+          }
+        }
+      }
+
+      await transaction.commit();
       return feria;
     } catch (error) {
+      await transaction.rollback();
       console.error("Error en actualizarFeria:", error);
       throw error;
     }

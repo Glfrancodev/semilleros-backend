@@ -37,6 +37,11 @@ const areaService = {
                 as: "categoria",
                 attributes: ["idCategoria", "nombre"],
               },
+              {
+                model: db.Materia,
+                as: "materias",
+                attributes: ["idMateria", "nombre"],
+              },
             ],
           },
         ],
@@ -65,6 +70,11 @@ const areaService = {
                 model: db.Categoria,
                 as: "categoria",
                 attributes: ["idCategoria", "nombre"],
+              },
+              {
+                model: db.Materia,
+                as: "materias",
+                attributes: ["idMateria", "nombre"],
               },
             ],
           },

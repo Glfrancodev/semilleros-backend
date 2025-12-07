@@ -63,6 +63,15 @@ const obtenerMaterias = async () => {
   return await Materia.findAll({
     include: [
       {
+        model: db.AreaCategoria,
+        as: "areaCategoria",
+        attributes: ["idAreaCategoria", "idArea", "idCategoria"],
+        include: [
+          { model: db.Area, as: "area", attributes: ["nombre"] },
+          { model: db.Categoria, as: "categoria", attributes: ["nombre"] },
+        ],
+      },
+      {
         model: db.GrupoMateria,
         as: "grupoMaterias",
         include: [
@@ -95,12 +104,105 @@ const obtenerMateriaPorId = async (idMateria) => {
 };
 
 // Actualizar una Materia
+// Actualizar una Materia
 const actualizarMateria = async (idMateria, datos) => {
-  const fechaActual = new Date();
-  return await Materia.update(
-    { ...datos, fechaActualizacion: fechaActual },
-    { where: { idMateria } }
-  );
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const fechaActual = new Date();
+    const { grupos, ...materiaData } = datos;
+
+    // 1. Actualizar datos básicos de la materia
+    const [updated] = await Materia.update(
+      { ...materiaData, fechaActualizacion: fechaActual },
+      { where: { idMateria }, transaction }
+    );
+
+    if (updated === 0) {
+      await transaction.rollback();
+      return [0];
+    }
+
+    // 2. Si se proporcionan grupos, actualizar la lista
+    if (grupos && Array.isArray(grupos)) {
+      // Obtener grupos actuales
+      const gruposActuales = await GrupoMateria.findAll({
+        where: { idMateria },
+        include: [{ model: Grupo, as: "grupo" }],
+        transaction
+      });
+
+      const mapGruposActuales = new Map(); // sigla -> { idGrupoMateria, idGrupo, idDocente }
+      gruposActuales.forEach(gm => {
+        mapGruposActuales.set(gm.grupo.sigla, {
+          idGrupoMateria: gm.idGrupoMateria,
+          idGrupo: gm.idGrupo,
+          idDocente: gm.idDocente
+        });
+      });
+
+      const siglasNuevas = new Set(grupos.map(g => g.sigla));
+
+      // A. Identificar grupos a ELIMINAR (están en actuales pero no en nuevos)
+      for (const [sigla, info] of mapGruposActuales) {
+        if (!siglasNuevas.has(sigla)) {
+          await GrupoMateria.destroy({
+            where: { idGrupoMateria: info.idGrupoMateria },
+            transaction
+          });
+          // Opcional: Eliminar el Grupo si se desea limpiar, pero por seguridad solo quitamos la relación
+          // await Grupo.destroy({ where: { idGrupo: info.idGrupo }, transaction }); 
+        }
+      }
+
+      // B. Identificar grupos a CREAR o ACTUALIZAR
+      for (const grupoData of grupos) {
+        if (mapGruposActuales.has(grupoData.sigla)) {
+          // ACTUALIZAR: Si existe, verificar si cambió el docente
+          const infoActual = mapGruposActuales.get(grupoData.sigla);
+          if (infoActual.idDocente !== grupoData.idDocente) {
+            await GrupoMateria.update(
+              { 
+                idDocente: grupoData.idDocente,
+                fechaActualizacion: fechaActual
+              },
+              { 
+                where: { idGrupoMateria: infoActual.idGrupoMateria },
+                transaction
+              }
+            );
+          }
+        } else {
+          // CREAR: No existe, crear Grupo y GrupoMateria
+          const nuevoGrupo = await Grupo.create(
+            {
+              sigla: grupoData.sigla,
+              fechaCreacion: fechaActual,
+              fechaActualizacion: fechaActual,
+            },
+            { transaction }
+          );
+
+          await GrupoMateria.create(
+            {
+              idGrupo: nuevoGrupo.idGrupo,
+              idMateria: idMateria,
+              idDocente: grupoData.idDocente,
+              fechaCreacion: fechaActual,
+              fechaActualizacion: fechaActual,
+            },
+            { transaction }
+          );
+        }
+      }
+    }
+
+    await transaction.commit();
+    return [updated];
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 };
 
 // Eliminar una Materia (Hard delete)

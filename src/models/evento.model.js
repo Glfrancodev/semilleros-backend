@@ -22,6 +22,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: { notEmpty: true },
       },
+      capacidadMaxima: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
+      },
       estaActivo: {
         type: DataTypes.BOOLEAN,
         allowNull: false,

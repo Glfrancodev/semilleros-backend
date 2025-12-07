@@ -25,6 +25,14 @@ module.exports = (sequelize, DataTypes) => {
           key: "idAreaCategoria",
         },
       },
+      idSemestre: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: "Semestre",
+          key: "idSemestre",
+        },
+      },
       fechaCreacion: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
