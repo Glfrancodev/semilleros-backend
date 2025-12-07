@@ -34,6 +34,11 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: 0,
         validate: { min: 0 },
       },
+      esFinal: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
       idFeria: {
         type: DataTypes.UUID,
         allowNull: false,

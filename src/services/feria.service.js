@@ -7,18 +7,67 @@ const feriaService = {
    * Crear una nueva feria
    */
   async crearFeria(data) {
+    const transaction = await db.sequelize.transaction();
     try {
-      const feria = await Feria.create({
-        nombre: data.nombre,
-        semestre: data.semestre,
-        año: data.año,
-        estaActivo: data.estaActivo !== undefined ? data.estaActivo : true,
-        fechaCreacion: new Date(),
-        fechaActualizacion: new Date(),
+      // 1. Crear la feria
+      const feria = await Feria.create(
+        {
+          nombre: data.nombre,
+          semestre: data.semestre,
+          año: data.año,
+          estaActivo: data.estaActivo !== undefined ? data.estaActivo : true,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date(),
+        },
+        { transaction }
+      );
+
+      // 2. Crear las tareas asociadas si existen
+      if (data.tareas && Array.isArray(data.tareas) && data.tareas.length > 0) {
+        // VALIDACIÓN: Solo una tarea puede ser final
+        const tareasFinal = data.tareas.filter((t) => t.esFinal === true);
+        if (tareasFinal.length > 1) {
+          throw new Error("Solo puede haber una tarea final por feria");
+        }
+
+        const tareasConFeria = data.tareas.map((tarea) => ({
+          nombre: tarea.nombre,
+          descripcion: tarea.descripcion,
+          fechaLimite: tarea.fechaLimite,
+          orden: tarea.orden !== undefined ? tarea.orden : 0,
+          esFinal: tarea.esFinal !== undefined ? tarea.esFinal : false,
+          idFeria: feria.idFeria,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date(),
+        }));
+
+        await db.Tarea.bulkCreate(tareasConFeria, { transaction });
+      }
+
+      await transaction.commit();
+
+      // 3. Retornar la feria con sus tareas
+      const feriaCompleta = await Feria.findByPk(feria.idFeria, {
+        include: [
+          {
+            model: db.Tarea,
+            as: "tareas",
+            attributes: [
+              "idTarea",
+              "nombre",
+              "descripcion",
+              "fechaLimite",
+              "orden",
+              "esFinal",
+            ],
+          },
+        ],
+        order: [[{ model: db.Tarea, as: "tareas" }, "orden", "ASC"]],
       });
 
-      return feria;
+      return feriaCompleta;
     } catch (error) {
+      await transaction.rollback();
       console.error("Error en crearFeria:", error);
       throw error;
     }
@@ -34,7 +83,14 @@ const feriaService = {
           {
             model: db.Tarea,
             as: "tareas",
-            attributes: ["idTarea", "nombre", "descripcion", "fechaLimite", "orden"],
+            attributes: [
+              "idTarea",
+              "nombre",
+              "descripcion",
+              "fechaLimite",
+              "orden",
+              "esFinal",
+            ],
           },
         ],
         order: [
@@ -81,26 +137,44 @@ const feriaService = {
       }
 
       // 1. Actualizar datos básicos
-      await feria.update({
-        nombre: data.nombre || feria.nombre,
-        semestre: data.semestre !== undefined ? data.semestre : feria.semestre,
-        año: data.año || feria.año,
-        estaActivo:
-          data.estaActivo !== undefined ? data.estaActivo : feria.estaActivo,
-        fechaActualizacion: new Date(),
-      }, { transaction });
+      await feria.update(
+        {
+          nombre: data.nombre || feria.nombre,
+          semestre:
+            data.semestre !== undefined ? data.semestre : feria.semestre,
+          año: data.año || feria.año,
+          estaActivo:
+            data.estaActivo !== undefined ? data.estaActivo : feria.estaActivo,
+          fechaActualizacion: new Date(),
+        },
+        { transaction }
+      );
 
       // 2. Actualizar Tareas si se proporcionan
       if (data.tareas && Array.isArray(data.tareas)) {
         const tareasActuales = await db.Tarea.findAll({
           where: { idFeria },
-          transaction
+          transaction,
         });
 
         const mapTareasActuales = new Map(); // orden -> Tarea
-        tareasActuales.forEach(t => mapTareasActuales.set(t.orden, t));
+        tareasActuales.forEach((t) => mapTareasActuales.set(t.orden, t));
 
-        const ordenesNuevos = new Set(data.tareas.map(t => t.orden));
+        const ordenesNuevos = new Set(data.tareas.map((t) => t.orden));
+
+        // VALIDACIÓN: Solo una tarea puede ser final
+        const tareasFinal = data.tareas.filter((t) => t.esFinal === true);
+        if (tareasFinal.length > 1) {
+          throw new Error("Solo puede haber una tarea final por feria");
+        }
+
+        // Si hay una nueva tarea final, desmarcar todas las tareas actuales
+        if (tareasFinal.length === 1) {
+          await db.Tarea.update(
+            { esFinal: false },
+            { where: { idFeria }, transaction }
+          );
+        }
 
         // A. Identificar tareas a ELIMINAR (están en actuales pero no en nuevos)
         for (const [orden, tarea] of mapTareasActuales) {
@@ -108,7 +182,7 @@ const feriaService = {
             if (orden === 0) {
               // PROTECCIÓN: No permitir eliminar tarea 0
               console.warn("Intento de eliminar tarea 0 bloqueado.");
-              continue; 
+              continue;
             }
             await tarea.destroy({ transaction });
           }
@@ -119,23 +193,33 @@ const feriaService = {
           if (mapTareasActuales.has(tareaData.orden)) {
             // ACTUALIZAR
             const tareaExistente = mapTareasActuales.get(tareaData.orden);
-            await tareaExistente.update({
-              nombre: tareaData.nombre,
-              descripcion: tareaData.descripcion,
-              fechaLimite: tareaData.fechaLimite,
-              fechaActualizacion: new Date()
-            }, { transaction });
+            await tareaExistente.update(
+              {
+                nombre: tareaData.nombre,
+                descripcion: tareaData.descripcion,
+                fechaLimite: tareaData.fechaLimite,
+                esFinal:
+                  tareaData.esFinal !== undefined ? tareaData.esFinal : false,
+                fechaActualizacion: new Date(),
+              },
+              { transaction }
+            );
           } else {
             // CREAR
-            await db.Tarea.create({
-              idFeria: idFeria,
-              nombre: tareaData.nombre,
-              descripcion: tareaData.descripcion,
-              fechaLimite: tareaData.fechaLimite,
-              orden: tareaData.orden,
-              fechaCreacion: new Date(),
-              fechaActualizacion: new Date()
-            }, { transaction });
+            await db.Tarea.create(
+              {
+                idFeria: idFeria,
+                nombre: tareaData.nombre,
+                descripcion: tareaData.descripcion,
+                fechaLimite: tareaData.fechaLimite,
+                orden: tareaData.orden,
+                esFinal:
+                  tareaData.esFinal !== undefined ? tareaData.esFinal : false,
+                fechaCreacion: new Date(),
+                fechaActualizacion: new Date(),
+              },
+              { transaction }
+            );
           }
         }
       }

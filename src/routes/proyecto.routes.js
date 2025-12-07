@@ -28,6 +28,12 @@ router.get(
   proyectoController.obtenerMisProyectosInvitados
 );
 
+// GET /api/proyectos/aprobados-feria - Obtener proyectos aprobados para feria (DEBE IR ANTES de /:idProyecto)
+router.get(
+  "/aprobados-feria",
+  proyectoController.obtenerProyectosAprobadosFeria
+);
+
 // GET /api/proyectos - Obtener todos los proyectos
 router.get("/", proyectoController.obtenerProyectos);
 

@@ -19,7 +19,7 @@ const proyectoService = {
         descripcion: data.descripcion,
         contenido: data.contenido,
         estaAprobado: data.estaAprobado || null,
-        esFinal: data.esFinal || null,
+        esFinal: data.esFinal !== undefined ? data.esFinal : null,
         esPublico: data.esPublico ?? false,
         idGrupoMateria: data.idGrupoMateria,
         fechaCreacion: new Date(),
@@ -523,6 +523,7 @@ const proyectoService = {
           descripcion: tarea.descripcion,
           fechaLimite: tarea.fechaLimite,
           idTarea: tarea.idTarea,
+          esFinal: tarea.esFinal,
         };
 
         if (revision && revision.revisado) {
@@ -695,6 +696,93 @@ const proyectoService = {
       };
     } catch (error) {
       console.error("Error en obtenerContenidoEditor:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener proyectos aprobados para feria (esFinal = true) de la feria activa
+   */
+  async obtenerProyectosAprobadosFeria() {
+    try {
+      const { QueryTypes } = require("sequelize");
+
+      // Consulta SQL única optimizada con todos los datos necesarios
+      const resultado = await db.sequelize.query(
+        `
+        WITH FeriaActiva AS (
+          SELECT "idFeria" 
+          FROM "Feria" 
+          WHERE "estaActivo" = true 
+          LIMIT 1
+        ),
+        ProyectosAprobados AS (
+          SELECT DISTINCT p."idProyecto", p.nombre, p.descripcion
+          FROM "Proyecto" p
+          INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+          INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+          INNER JOIN FeriaActiva fa ON t."idFeria" = fa."idFeria"
+          WHERE p."esFinal" = true
+        )
+        SELECT 
+          pa."idProyecto",
+          pa.nombre,
+          pa.descripcion,
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'idEstudianteProyecto', ep."idEstudianteProyecto",
+              'codigo', e."codigoEstudiante",
+              'nombreCompleto', u.nombre || ' ' || u.apellido,
+              'esLider', ep."esLider",
+              'idUsuario', u."idUsuario"
+            )
+          ) FILTER (WHERE ep."idEstudianteProyecto" IS NOT NULL) as integrantes,
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'idDocenteProyecto', dp."idDocenteProyecto",
+              'idDocente', dp."idDocente",
+              'nombreCompleto', ud.nombre || ' ' || ud.apellido,
+              'esTutor', dp."esTutor"
+            )
+          ) FILTER (WHERE dp."idDocenteProyecto" IS NOT NULL) as jurados,
+          COUNT(DISTINCT dp."idDocenteProyecto") as "cantidadJurados"
+        FROM ProyectosAprobados pa
+        LEFT JOIN "EstudianteProyecto" ep ON ep."idProyecto" = pa."idProyecto" AND ep.invitacion = true
+        LEFT JOIN "Estudiante" e ON e."idEstudiante" = ep."idEstudiante"
+        LEFT JOIN "Usuario" u ON u."idUsuario" = e."idUsuario"
+        LEFT JOIN "DocenteProyecto" dp ON dp."idProyecto" = pa."idProyecto"
+        LEFT JOIN "Docente" d ON d."idDocente" = dp."idDocente"
+        LEFT JOIN "Usuario" ud ON ud."idUsuario" = d."idUsuario"
+        GROUP BY pa."idProyecto", pa.nombre, pa.descripcion
+        ORDER BY pa."idProyecto"
+        `,
+        {
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      // Formatear el resultado
+      return resultado.map((proyecto) => ({
+        idProyecto: proyecto.idProyecto,
+        nombre: proyecto.nombre,
+        descripcion: proyecto.descripcion,
+        integrantes: (proyecto.integrantes || []).map((i) => ({
+          idEstudianteProyecto: i.idEstudianteProyecto,
+          codigo: i.codigo || "Sin código",
+          nombreCompleto: i.nombreCompleto || "Sin nombre",
+          esLider: i.esLider,
+          idUsuario: i.idUsuario,
+        })),
+        jurados: (proyecto.jurados || []).map((j) => ({
+          idDocenteProyecto: j.idDocenteProyecto,
+          idDocente: j.idDocente,
+          nombreCompleto: j.nombreCompleto || "Sin nombre",
+          esTutor: j.esTutor,
+        })),
+        cantidadJurados: parseInt(proyecto.cantidadJurados) || 0,
+      }));
+    } catch (error) {
+      console.error("Error en obtenerProyectosAprobadosFeria:", error);
       throw error;
     }
   },

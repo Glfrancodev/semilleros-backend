@@ -14,6 +14,7 @@ const tareaService = {
         descripcion: data.descripcion,
         fechaLimite: data.fechaLimite,
         orden: data.orden !== undefined ? data.orden : 0,
+        esFinal: data.esFinal !== undefined ? data.esFinal : false,
         idFeria: data.idFeria,
         fechaCreacion: new Date(),
         fechaActualizacion: new Date(),
@@ -202,6 +203,7 @@ const tareaService = {
           data.descripcion !== undefined ? data.descripcion : tarea.descripcion,
         fechaLimite: data.fechaLimite || tarea.fechaLimite,
         orden: data.orden !== undefined ? data.orden : tarea.orden,
+        esFinal: data.esFinal !== undefined ? data.esFinal : tarea.esFinal,
         idFeria: data.idFeria || tarea.idFeria,
         fechaActualizacion: new Date(),
       });

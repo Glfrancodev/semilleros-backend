@@ -32,7 +32,7 @@ const obtenerDocentes = async () => {
       {
         model: Usuario,
         as: "usuario",
-        attributes: ["idUsuario", "nombre", "correo"],
+        attributes: ["idUsuario", "nombre", "apellido", "correo"],
       },
     ],
   });

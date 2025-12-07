@@ -355,6 +355,34 @@ const proyectoController = {
       });
     }
   },
+
+  /**
+   * GET /api/proyectos/aprobados-feria
+   * Obtener proyectos aprobados para feria (esFinal = true) de la feria activa
+   */
+  async obtenerProyectosAprobadosFeria(req, res) {
+    try {
+      const proyectos = await proyectoService.obtenerProyectosAprobadosFeria();
+
+      // Configurar cache para reducir consultas repetidas
+      res.set("Cache-Control", "public, max-age=30"); // Cache de 30 segundos
+
+      return res.success(
+        "Proyectos aprobados para feria obtenidos exitosamente",
+        proyectos
+      );
+    } catch (error) {
+      console.error("Error al obtener proyectos aprobados para feria:", error);
+      return res.error(
+        "Error al obtener los proyectos aprobados para feria",
+        500,
+        {
+          code: "FETCH_ERROR",
+          details: error.message,
+        }
+      );
+    }
+  },
 };
 
 module.exports = proyectoController;

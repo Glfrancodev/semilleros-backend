@@ -1,4 +1,4 @@
-const db = require('../models');
+const db = require("../models");
 const DocenteProyecto = db.DocenteProyecto;
 const Docente = db.Docente;
 const Proyecto = db.Proyecto;
@@ -20,7 +20,7 @@ const docenteProyectoService = {
 
       return docenteProyecto;
     } catch (error) {
-      console.error('Error en asignarDocenteAProyecto:', error);
+      console.error("Error en asignarDocenteAProyecto:", error);
       throw error;
     }
   },
@@ -34,23 +34,23 @@ const docenteProyectoService = {
         include: [
           {
             model: Docente,
-            as: 'docente',
+            as: "docente",
           },
           {
             model: Proyecto,
-            as: 'proyecto',
+            as: "proyecto",
           },
           {
             model: Calificacion,
-            as: 'calificaciones',
+            as: "calificaciones",
           },
         ],
-        order: [['fechaCreacion', 'DESC']],
+        order: [["fechaCreacion", "DESC"]],
       });
 
       return asignaciones;
     } catch (error) {
-      console.error('Error en obtenerAsignaciones:', error);
+      console.error("Error en obtenerAsignaciones:", error);
       throw error;
     }
   },
@@ -60,19 +60,29 @@ const docenteProyectoService = {
    */
   async obtenerDocentesPorProyecto(idProyecto) {
     try {
+      const db = require("../models");
+      const { Usuario } = db;
+
       const docentes = await DocenteProyecto.findAll({
         where: { idProyecto },
         include: [
           {
             model: Docente,
-            as: 'docente',
+            as: "docente",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["idUsuario", "nombre", "apellido", "correo"],
+              },
+            ],
           },
         ],
       });
 
       return docentes;
     } catch (error) {
-      console.error('Error en obtenerDocentesPorProyecto:', error);
+      console.error("Error en obtenerDocentesPorProyecto:", error);
       throw error;
     }
   },
@@ -87,14 +97,14 @@ const docenteProyectoService = {
         include: [
           {
             model: Proyecto,
-            as: 'proyecto',
+            as: "proyecto",
           },
         ],
       });
 
       return proyectos;
     } catch (error) {
-      console.error('Error en obtenerProyectosPorDocente:', error);
+      console.error("Error en obtenerProyectosPorDocente:", error);
       throw error;
     }
   },
@@ -108,26 +118,26 @@ const docenteProyectoService = {
         include: [
           {
             model: Docente,
-            as: 'docente',
+            as: "docente",
           },
           {
             model: Proyecto,
-            as: 'proyecto',
+            as: "proyecto",
           },
           {
             model: Calificacion,
-            as: 'calificaciones',
+            as: "calificaciones",
           },
         ],
       });
 
       if (!asignacion) {
-        throw new Error('Asignación no encontrada');
+        throw new Error("Asignación no encontrada");
       }
 
       return asignacion;
     } catch (error) {
-      console.error('Error en obtenerAsignacionPorId:', error);
+      console.error("Error en obtenerAsignacionPorId:", error);
       throw error;
     }
   },
@@ -140,7 +150,7 @@ const docenteProyectoService = {
       const asignacion = await DocenteProyecto.findByPk(idDocenteProyecto);
 
       if (!asignacion) {
-        throw new Error('Asignación no encontrada');
+        throw new Error("Asignación no encontrada");
       }
 
       await asignacion.update({
@@ -150,7 +160,7 @@ const docenteProyectoService = {
 
       return asignacion;
     } catch (error) {
-      console.error('Error en actualizarAsignacion:', error);
+      console.error("Error en actualizarAsignacion:", error);
       throw error;
     }
   },
@@ -163,14 +173,14 @@ const docenteProyectoService = {
       const asignacion = await DocenteProyecto.findByPk(idDocenteProyecto);
 
       if (!asignacion) {
-        throw new Error('Asignación no encontrada');
+        throw new Error("Asignación no encontrada");
       }
 
       await asignacion.destroy();
 
-      return { mensaje: 'Docente removido del proyecto exitosamente' };
+      return { mensaje: "Docente removido del proyecto exitosamente" };
     } catch (error) {
-      console.error('Error en eliminarAsignacion:', error);
+      console.error("Error en eliminarAsignacion:", error);
       throw error;
     }
   },
