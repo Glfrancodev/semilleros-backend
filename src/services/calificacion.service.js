@@ -1,7 +1,7 @@
-const db = require('../models');
+const db = require("../models");
 const Calificacion = db.Calificacion;
-const SubCalificacion = db.SubCalificacion;
 const DocenteProyecto = db.DocenteProyecto;
+const SubCalificacion = db.SubCalificacion;
 
 const calificacionService = {
   /**
@@ -9,17 +9,32 @@ const calificacionService = {
    */
   async crearCalificacion(data) {
     try {
+      // Validar que exista la SubCalificacion
+      const subCalificacion = await SubCalificacion.findByPk(
+        data.idSubCalificacion
+      );
+      if (!subCalificacion) {
+        throw new Error("SubCalificacion no encontrada");
+      }
+
+      // Validar que el puntaje no exceda el máximo
+      if (data.puntajeObtenido > subCalificacion.maximoPuntaje) {
+        throw new Error(
+          `El puntaje obtenido (${data.puntajeObtenido}) no puede exceder el máximo permitido (${subCalificacion.maximoPuntaje})`
+        );
+      }
+
       const calificacion = await Calificacion.create({
         puntajeObtenido: data.puntajeObtenido,
-        idSubCalificacion: data.idSubCalificacion,
         idDocenteProyecto: data.idDocenteProyecto,
+        idSubCalificacion: data.idSubCalificacion,
         fechaCreacion: new Date(),
         fechaActualizacion: new Date(),
       });
 
       return calificacion;
     } catch (error) {
-      console.error('Error en crearCalificacion:', error);
+      console.error("Error en crearCalificacion:", error);
       throw error;
     }
   },
@@ -32,20 +47,20 @@ const calificacionService = {
       const calificaciones = await Calificacion.findAll({
         include: [
           {
-            model: SubCalificacion,
-            as: 'subCalificacion',
+            model: DocenteProyecto,
+            as: "docenteProyecto",
           },
           {
-            model: DocenteProyecto,
-            as: 'docenteProyecto',
+            model: SubCalificacion,
+            as: "subCalificacion",
           },
         ],
-        order: [['fechaCreacion', 'DESC']],
+        order: [["fechaCreacion", "DESC"]],
       });
 
       return calificaciones;
     } catch (error) {
-      console.error('Error en obtenerCalificaciones:', error);
+      console.error("Error en obtenerCalificaciones:", error);
       throw error;
     }
   },
@@ -58,23 +73,23 @@ const calificacionService = {
       const calificacion = await Calificacion.findByPk(idCalificacion, {
         include: [
           {
-            model: SubCalificacion,
-            as: 'subCalificacion',
+            model: DocenteProyecto,
+            as: "docenteProyecto",
           },
           {
-            model: DocenteProyecto,
-            as: 'docenteProyecto',
+            model: SubCalificacion,
+            as: "subCalificacion",
           },
         ],
       });
 
       if (!calificacion) {
-        throw new Error('Calificación no encontrada');
+        throw new Error("Calificación no encontrada");
       }
 
       return calificacion;
     } catch (error) {
-      console.error('Error en obtenerCalificacionPorId:', error);
+      console.error("Error en obtenerCalificacionPorId:", error);
       throw error;
     }
   },
@@ -89,15 +104,15 @@ const calificacionService = {
         include: [
           {
             model: SubCalificacion,
-            as: 'subCalificacion',
+            as: "subCalificacion",
           },
         ],
-        order: [['fechaCreacion', 'DESC']],
+        order: [["fechaCreacion", "DESC"]],
       });
 
       return calificaciones;
     } catch (error) {
-      console.error('Error en obtenerCalificacionesPorDocenteProyecto:', error);
+      console.error("Error en obtenerCalificacionesPorDocenteProyecto:", error);
       throw error;
     }
   },
@@ -112,15 +127,15 @@ const calificacionService = {
         include: [
           {
             model: DocenteProyecto,
-            as: 'docenteProyecto',
+            as: "docenteProyecto",
           },
         ],
-        order: [['fechaCreacion', 'DESC']],
+        order: [["fechaCreacion", "DESC"]],
       });
 
       return calificaciones;
     } catch (error) {
-      console.error('Error en obtenerCalificacionesPorSubCalificacion:', error);
+      console.error("Error en obtenerCalificacionesPorSubCalificacion:", error);
       throw error;
     }
   },
@@ -130,22 +145,43 @@ const calificacionService = {
    */
   async actualizarCalificacion(idCalificacion, data) {
     try {
-      const calificacion = await Calificacion.findByPk(idCalificacion);
+      const calificacion = await Calificacion.findByPk(idCalificacion, {
+        include: [
+          {
+            model: SubCalificacion,
+            as: "subCalificacion",
+          },
+        ],
+      });
 
       if (!calificacion) {
-        throw new Error('Calificación no encontrada');
+        throw new Error("Calificación no encontrada");
+      }
+
+      // Si se actualiza el puntaje, validar contra el máximo de la SubCalificacion
+      if (data.puntajeObtenido !== undefined) {
+        if (data.puntajeObtenido > calificacion.subCalificacion.maximoPuntaje) {
+          throw new Error(
+            `El puntaje obtenido (${data.puntajeObtenido}) no puede exceder el máximo permitido (${calificacion.subCalificacion.maximoPuntaje})`
+          );
+        }
       }
 
       await calificacion.update({
-        puntajeObtenido: data.puntajeObtenido !== undefined ? data.puntajeObtenido : calificacion.puntajeObtenido,
-        idSubCalificacion: data.idSubCalificacion || calificacion.idSubCalificacion,
-        idDocenteProyecto: data.idDocenteProyecto || calificacion.idDocenteProyecto,
+        puntajeObtenido:
+          data.puntajeObtenido !== undefined
+            ? data.puntajeObtenido
+            : calificacion.puntajeObtenido,
+        idDocenteProyecto:
+          data.idDocenteProyecto || calificacion.idDocenteProyecto,
+        idSubCalificacion:
+          data.idSubCalificacion || calificacion.idSubCalificacion,
         fechaActualizacion: new Date(),
       });
 
       return calificacion;
     } catch (error) {
-      console.error('Error en actualizarCalificacion:', error);
+      console.error("Error en actualizarCalificacion:", error);
       throw error;
     }
   },
@@ -158,14 +194,117 @@ const calificacionService = {
       const calificacion = await Calificacion.findByPk(idCalificacion);
 
       if (!calificacion) {
-        throw new Error('Calificación no encontrada');
+        throw new Error("Calificación no encontrada");
       }
 
       await calificacion.destroy();
 
-      return { mensaje: 'Calificación eliminada exitosamente' };
+      return { mensaje: "Calificación eliminada exitosamente" };
     } catch (error) {
-      console.error('Error en eliminarCalificacion:', error);
+      console.error("Error en eliminarCalificacion:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener calificaciones de un proyecto por DocenteProyecto
+   * Incluye información completa de SubCalificacion para mostrar puntaje máximo
+   */
+  async obtenerCalificacionesProyecto(idDocenteProyecto) {
+    try {
+      const calificaciones = await Calificacion.findAll({
+        where: { idDocenteProyecto },
+        include: [
+          {
+            model: SubCalificacion,
+            as: "subCalificacion",
+            include: [
+              {
+                model: db.TipoCalificacion,
+                as: "tipoCalificacion",
+              },
+            ],
+          },
+        ],
+        order: [["fechaCreacion", "ASC"]],
+      });
+
+      return calificaciones;
+    } catch (error) {
+      console.error("Error en obtenerCalificacionesProyecto:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Calificar proyecto: actualizar múltiples calificaciones
+   * Solo permite calificar si no ha sido calificado previamente
+   */
+  async calificarProyecto(idDocenteProyecto, calificaciones) {
+    const transaction = await db.sequelize.transaction();
+    try {
+      // Obtener todas las calificaciones del DocenteProyecto
+      const calificacionesExistentes = await Calificacion.findAll({
+        where: { idDocenteProyecto },
+        include: [
+          {
+            model: SubCalificacion,
+            as: "subCalificacion",
+          },
+        ],
+        transaction,
+      });
+
+      // Verificar que ninguna calificación haya sido calificada previamente
+      const yaCalificado = calificacionesExistentes.some(
+        (cal) => cal.calificado === true
+      );
+      if (yaCalificado) {
+        throw new Error(
+          "Este proyecto ya ha sido calificado y no puede modificarse"
+        );
+      }
+
+      // Actualizar cada calificación
+      const actualizaciones = [];
+      for (const calData of calificaciones) {
+        const calificacion = calificacionesExistentes.find(
+          (c) => c.idCalificacion === calData.idCalificacion
+        );
+
+        if (!calificacion) {
+          throw new Error(
+            `Calificación ${calData.idCalificacion} no encontrada`
+          );
+        }
+
+        // Validar que el puntaje no exceda el máximo
+        if (
+          calData.puntajeObtenido > calificacion.subCalificacion.maximoPuntaje
+        ) {
+          throw new Error(
+            `El puntaje obtenido (${calData.puntajeObtenido}) para "${calificacion.subCalificacion.nombre}" no puede exceder el máximo permitido (${calificacion.subCalificacion.maximoPuntaje})`
+          );
+        }
+
+        // Actualizar la calificación
+        await calificacion.update(
+          {
+            puntajeObtenido: calData.puntajeObtenido,
+            calificado: true,
+            fechaActualizacion: new Date(),
+          },
+          { transaction }
+        );
+
+        actualizaciones.push(calificacion);
+      }
+
+      await transaction.commit();
+      return actualizaciones;
+    } catch (error) {
+      await transaction.rollback();
+      console.error("Error en calificarProyecto:", error);
       throw error;
     }
   },

@@ -3,23 +3,131 @@ const DocenteProyecto = db.DocenteProyecto;
 const Docente = db.Docente;
 const Proyecto = db.Proyecto;
 const Calificacion = db.Calificacion;
+const Materia = db.Materia;
+const Feria = db.Feria;
+const TipoCalificacion = db.TipoCalificacion;
+const SubCalificacion = db.SubCalificacion;
+const sequelize = db.sequelize;
 
 const docenteProyectoService = {
   /**
    * Asignar un docente a un proyecto
    */
   async asignarDocenteAProyecto(data) {
+    const transaction = await sequelize.transaction();
+
     try {
-      const docenteProyecto = await DocenteProyecto.create({
-        idDocente: data.idDocente,
-        idProyecto: data.idProyecto,
-        esTutor: data.esTutor || false,
-        fechaCreacion: new Date(),
-        fechaActualizacion: new Date(),
+      // Crear la asignación DocenteProyecto
+      const docenteProyecto = await DocenteProyecto.create(
+        {
+          idDocente: data.idDocente,
+          idProyecto: data.idProyecto,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date(),
+        },
+        { transaction }
+      );
+
+      // Obtener el proyecto con revisiones -> tarea -> feria -> tipocalificacion -> subcalificaciones
+      const proyecto = await Proyecto.findByPk(data.idProyecto, {
+        include: [
+          {
+            model: db.Revision,
+            as: "revisiones",
+            include: [
+              {
+                model: db.Tarea,
+                as: "tarea",
+                include: [
+                  {
+                    model: Feria,
+                    as: "feria",
+                    include: [
+                      {
+                        model: TipoCalificacion,
+                        as: "tipoCalificacion",
+                        include: [
+                          {
+                            model: SubCalificacion,
+                            as: "subCalificaciones",
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        transaction,
       });
 
+      // Verificar que el proyecto tenga revisiones y obtener la feria
+      let feria = null;
+      if (proyecto && proyecto.revisiones && proyecto.revisiones.length > 0) {
+        // Obtener la feria de la primera revisión
+        const primeraRevision = proyecto.revisiones[0];
+        if (primeraRevision.tarea && primeraRevision.tarea.feria) {
+          feria = primeraRevision.tarea.feria;
+        }
+      }
+
+      console.log("🔍 Debug - Feria:", JSON.stringify(feria, null, 2));
+
+      // Si hay feria con tipo de calificación, obtener las subcalificaciones con un query separado
+      if (feria && feria.idTipoCalificacion) {
+        // Query separado para obtener TODAS las subcalificaciones (evita problemas con includes profundos)
+        const subCalificaciones = await SubCalificacion.findAll({
+          where: { idTipoCalificacion: feria.idTipoCalificacion },
+          transaction,
+        });
+
+        console.log(
+          "🔍 Debug - SubCalificaciones obtenidas:",
+          subCalificaciones.length
+        );
+        console.log(
+          "🔍 Debug - SubCalificaciones:",
+          JSON.stringify(subCalificaciones, null, 2)
+        );
+
+        if (subCalificaciones && subCalificaciones.length > 0) {
+          // Crear una calificación por cada subCalificación
+          const calificaciones = subCalificaciones.map((subCal) => ({
+            idDocenteProyecto: docenteProyecto.idDocenteProyecto,
+            idSubCalificacion: subCal.idSubCalificacion,
+            puntajeObtenido: 0,
+            calificado: false,
+            fechaCreacion: new Date(),
+            fechaActualizacion: new Date(),
+          }));
+
+          console.log(
+            "🔍 Debug - Calificaciones a crear:",
+            JSON.stringify(calificaciones, null, 2)
+          );
+
+          await Calificacion.bulkCreate(calificaciones, { transaction });
+
+          console.log(
+            `✅ Se crearon ${calificaciones.length} calificaciones para DocenteProyecto ${docenteProyecto.idDocenteProyecto}`
+          );
+        } else {
+          console.log(
+            `⚠️ El proyecto ${data.idProyecto} no tiene subcalificaciones configuradas. No se crearon calificaciones.`
+          );
+        }
+      } else {
+        console.log(
+          `⚠️ El proyecto ${data.idProyecto} no tiene una feria con tipo de calificación configurado. No se crearon calificaciones.`
+        );
+      }
+
+      await transaction.commit();
       return docenteProyecto;
     } catch (error) {
+      await transaction.rollback();
       console.error("Error en asignarDocenteAProyecto:", error);
       throw error;
     }
@@ -154,7 +262,6 @@ const docenteProyectoService = {
       }
 
       await asignacion.update({
-        esTutor: data.esTutor !== undefined ? data.esTutor : asignacion.esTutor,
         fechaActualizacion: new Date(),
       });
 
@@ -254,15 +361,32 @@ const docenteProyectoService = {
               },
             ],
           },
+          {
+            model: Calificacion,
+            as: "calificaciones",
+            required: false,
+            attributes: ["calificado"],
+          },
         ],
       });
 
       // Formatear la respuesta
-      return proyectos.map((dp) => ({
-        idProyecto: dp.proyecto.idProyecto,
-        nombre: dp.proyecto.nombre,
-        descripcion: dp.proyecto.descripcion,
-      }));
+      return proyectos.map((dp) => {
+        // Verificar si todas las calificaciones están completas
+        const tieneCalificaciones =
+          dp.calificaciones && dp.calificaciones.length > 0;
+        const estaCalificado = tieneCalificaciones
+          ? dp.calificaciones.every((cal) => cal.calificado === true)
+          : false;
+
+        return {
+          idProyecto: dp.proyecto.idProyecto,
+          idDocenteProyecto: dp.idDocenteProyecto,
+          nombre: dp.proyecto.nombre,
+          descripcion: dp.proyecto.descripcion,
+          estaCalificado,
+        };
+      });
     } catch (error) {
       console.error("Error en obtenerMisProyectosComoJurado:", error);
       throw error;

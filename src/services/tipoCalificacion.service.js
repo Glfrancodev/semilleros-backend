@@ -1,4 +1,4 @@
-const db = require('../models');
+const db = require("../models");
 const TipoCalificacion = db.TipoCalificacion;
 const SubCalificacion = db.SubCalificacion;
 
@@ -16,7 +16,7 @@ const tipoCalificacionService = {
 
       return tipoCalificacion;
     } catch (error) {
-      console.error('Error en crearTipoCalificacion:', error);
+      console.error("Error en crearTipoCalificacion:", error);
       throw error;
     }
   },
@@ -30,15 +30,15 @@ const tipoCalificacionService = {
         include: [
           {
             model: SubCalificacion,
-            as: 'subCalificaciones',
+            as: "subCalificaciones",
           },
         ],
-        order: [['nombre', 'ASC']],
+        order: [["nombre", "ASC"]],
       });
 
       return tipos;
     } catch (error) {
-      console.error('Error en obtenerTiposCalificacion:', error);
+      console.error("Error en obtenerTiposCalificacion:", error);
       throw error;
     }
   },
@@ -52,18 +52,28 @@ const tipoCalificacionService = {
         include: [
           {
             model: SubCalificacion,
-            as: 'subCalificaciones',
+            as: "subCalificaciones",
           },
         ],
       });
 
       if (!tipo) {
-        throw new Error('Tipo de calificación no encontrado');
+        throw new Error("Tipo de calificación no encontrado");
       }
+
+      console.log(
+        `🔍 TipoCalificacion ${idTipoCalificacion} tiene ${
+          tipo.subCalificaciones?.length || 0
+        } subCalificaciones`
+      );
+      console.log(
+        "🔍 SubCalificaciones:",
+        JSON.stringify(tipo.subCalificaciones, null, 2)
+      );
 
       return tipo;
     } catch (error) {
-      console.error('Error en obtenerTipoCalificacionPorId:', error);
+      console.error("Error en obtenerTipoCalificacionPorId:", error);
       throw error;
     }
   },
@@ -76,7 +86,7 @@ const tipoCalificacionService = {
       const tipo = await TipoCalificacion.findByPk(idTipoCalificacion);
 
       if (!tipo) {
-        throw new Error('Tipo de calificación no encontrado');
+        throw new Error("Tipo de calificación no encontrado");
       }
 
       await tipo.update({
@@ -86,7 +96,7 @@ const tipoCalificacionService = {
 
       return tipo;
     } catch (error) {
-      console.error('Error en actualizarTipoCalificacion:', error);
+      console.error("Error en actualizarTipoCalificacion:", error);
       throw error;
     }
   },
@@ -99,14 +109,14 @@ const tipoCalificacionService = {
       const tipo = await TipoCalificacion.findByPk(idTipoCalificacion);
 
       if (!tipo) {
-        throw new Error('Tipo de calificación no encontrado');
+        throw new Error("Tipo de calificación no encontrado");
       }
 
       await tipo.destroy();
 
-      return { mensaje: 'Tipo de calificación eliminado exitosamente' };
+      return { mensaje: "Tipo de calificación eliminado exitosamente" };
     } catch (error) {
-      console.error('Error en eliminarTipoCalificacion:', error);
+      console.error("Error en eliminarTipoCalificacion:", error);
       throw error;
     }
   },

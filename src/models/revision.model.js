@@ -43,7 +43,7 @@ module.exports = (sequelize, DataTypes) => {
       as: "proyecto",
       foreignKey: { name: "idProyecto", allowNull: false },
       onUpdate: "CASCADE",
-      onDelete: "CASCADE",
+      onDelete: "RESTRICT", // No eliminar el proyecto si se elimina una revisión
     });
 
     // FK -> Tarea (1 a 1)
@@ -51,7 +51,7 @@ module.exports = (sequelize, DataTypes) => {
       as: "tarea",
       foreignKey: { name: "idTarea", allowNull: false },
       onUpdate: "CASCADE",
-      onDelete: "CASCADE",
+      onDelete: "CASCADE", // Si se elimina la tarea, se eliminan sus revisiones
     });
   };
 

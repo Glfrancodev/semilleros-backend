@@ -742,8 +742,7 @@ const proyectoService = {
             DISTINCT jsonb_build_object(
               'idDocenteProyecto', dp."idDocenteProyecto",
               'idDocente', dp."idDocente",
-              'nombreCompleto', ud.nombre || ' ' || ud.apellido,
-              'esTutor', dp."esTutor"
+              'nombreCompleto', ud.nombre || ' ' || ud.apellido
             )
           ) FILTER (WHERE dp."idDocenteProyecto" IS NOT NULL) as jurados,
           COUNT(DISTINCT dp."idDocenteProyecto") as "cantidadJurados"
@@ -778,7 +777,6 @@ const proyectoService = {
           idDocenteProyecto: j.idDocenteProyecto,
           idDocente: j.idDocente,
           nombreCompleto: j.nombreCompleto || "Sin nombre",
-          esTutor: j.esTutor,
         })),
         cantidadJurados: parseInt(proyecto.cantidadJurados) || 0,
       }));
@@ -863,6 +861,124 @@ const proyectoService = {
       return;
     } catch (error) {
       console.error("Error en actualizarProyectoAprobadoTutor:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener la nota promedio de un proyecto basada en las calificaciones de todos los jurados
+   * @param {string} idProyecto - ID del proyecto
+   * @returns {Promise<{notaPromedio: number, feriaFinalizada: boolean} | null>}
+   */
+  async obtenerNotaPromedioProyecto(idProyecto) {
+    try {
+      // Obtener el proyecto con sus jurados y calificaciones
+      const proyecto = await Proyecto.findByPk(idProyecto, {
+        include: [
+          {
+            model: DocenteProyecto,
+            as: "docentesProyecto",
+            required: false,
+            include: [
+              {
+                model: db.Calificacion,
+                as: "calificaciones",
+                where: { calificado: true }, // Solo calificaciones completadas
+                required: false,
+              },
+            ],
+          },
+        ],
+      });
+
+      if (!proyecto) {
+        throw new Error("Proyecto no encontrado");
+      }
+
+      // Obtener la feria asociada al proyecto a través de revisiones y tareas
+      const revision = await db.Revision.findOne({
+        where: { idProyecto },
+        include: [
+          {
+            model: db.Tarea,
+            as: "tarea",
+            include: [
+              {
+                model: db.Feria,
+                as: "feria",
+                attributes: ["idFeria", "estaFinalizado"],
+              },
+            ],
+          },
+        ],
+      });
+
+      // Verificar si la feria está finalizada
+      let feriaFinalizada = false;
+      if (revision && revision.tarea && revision.tarea.feria) {
+        feriaFinalizada = revision.tarea.feria.estaFinalizado || false;
+      }
+
+      console.log("🔍 Debug nota promedio:", {
+        idProyecto,
+        feriaFinalizada,
+        feriaData: revision?.tarea?.feria,
+        cantidadJurados: proyecto.docentesProyecto?.length || 0,
+      });
+
+      // Si la feria no está finalizada, no calcular nota promedio
+      if (!feriaFinalizada) {
+        return {
+          notaPromedio: null,
+          feriaFinalizada: false,
+        };
+      }
+
+      // Calcular nota promedio de cada jurado
+      const jurados = proyecto.docentesProyecto || [];
+
+      if (jurados.length === 0) {
+        return {
+          notaPromedio: null,
+          feriaFinalizada: true,
+        };
+      }
+
+      const notasJurados = [];
+
+      for (const jurado of jurados) {
+        if (jurado.calificaciones && jurado.calificaciones.length > 0) {
+          // Sumar todas las calificaciones de este jurado
+          const totalPuntaje = jurado.calificaciones.reduce(
+            (sum, cal) => sum + cal.puntajeObtenido,
+            0
+          );
+          notasJurados.push(totalPuntaje);
+          console.log(
+            `📊 Jurado ${jurado.idDocenteProyecto}: ${totalPuntaje} puntos`
+          );
+        }
+      }
+
+      if (notasJurados.length === 0) {
+        return {
+          notaPromedio: null,
+          feriaFinalizada: true,
+        };
+      }
+
+      // Calcular promedio
+      const notaPromedio =
+        notasJurados.reduce((sum, nota) => sum + nota, 0) / notasJurados.length;
+
+      console.log(`✅ Nota promedio calculada: ${notaPromedio}`);
+
+      return {
+        notaPromedio: Math.round(notaPromedio * 100) / 100, // Redondear a 2 decimales
+        feriaFinalizada: true,
+      };
+    } catch (error) {
+      console.error("❌ Error en obtenerNotaPromedioProyecto:", error);
       throw error;
     }
   },

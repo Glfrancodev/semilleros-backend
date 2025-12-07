@@ -27,6 +27,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: true,
       },
+      estaFinalizado: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
       fechaCreacion: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
@@ -56,6 +61,14 @@ module.exports = (sequelize, DataTypes) => {
     Feria.hasMany(models.Semestre, {
       as: "semestres",
       foreignKey: { name: "idFeria", allowNull: true },
+      onUpdate: "CASCADE",
+      onDelete: "SET NULL",
+    });
+
+    // FK -> TipoCalificacion (nullable)
+    Feria.belongsTo(models.TipoCalificacion, {
+      as: "tipoCalificacion",
+      foreignKey: { name: "idTipoCalificacion", allowNull: true },
       onUpdate: "CASCADE",
       onDelete: "SET NULL",
     });

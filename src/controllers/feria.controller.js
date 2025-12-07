@@ -7,7 +7,10 @@ const feriaController = {
    */
   async crearFeria(req, res) {
     try {
-      const { nombre, semestre, año } = req.body;
+      const { nombre, semestre, año, tipoCalificacion } = req.body;
+
+      // Log para debug
+      console.log("📝 Body recibido:", JSON.stringify(req.body, null, 2));
 
       if (!nombre || !semestre || !año) {
         return res.validationError(
@@ -15,6 +18,27 @@ const feriaController = {
         );
       }
 
+      // Validar que se proporcione tipoCalificacion
+      if (!tipoCalificacion) {
+        console.error("❌ tipoCalificacion no encontrado en el body");
+        return res.validationError(
+          "El tipo de calificación es requerido para crear una feria"
+        );
+      }
+
+      // Validar que tipoCalificacion tenga subCalificaciones
+      if (
+        !tipoCalificacion.subCalificaciones ||
+        !Array.isArray(tipoCalificacion.subCalificaciones) ||
+        tipoCalificacion.subCalificaciones.length === 0
+      ) {
+        console.error("❌ subCalificaciones inválidas:", tipoCalificacion);
+        return res.validationError(
+          "Debe proporcionar al menos una subcalificación"
+        );
+      }
+
+      console.log("✅ Validaciones pasadas, creando feria...");
       const feria = await feriaService.crearFeria(req.body);
 
       return res.success("Feria creada exitosamente", feria, 201);

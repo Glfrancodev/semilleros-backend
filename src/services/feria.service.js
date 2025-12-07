@@ -9,20 +9,86 @@ const feriaService = {
   async crearFeria(data) {
     const transaction = await db.sequelize.transaction();
     try {
-      // 1. Crear la feria
+      let idTipoCalificacionCreado = null;
+
+      // 1. Validar y crear TipoCalificacion con SubCalificaciones si se proporciona
+      if (data.tipoCalificacion) {
+        const { nombre, subCalificaciones } = data.tipoCalificacion;
+
+        // Validar que exista al menos una subcalificación
+        if (
+          !subCalificaciones ||
+          !Array.isArray(subCalificaciones) ||
+          subCalificaciones.length === 0
+        ) {
+          throw new Error(
+            "El tipo de calificación debe tener al menos una subcalificación"
+          );
+        }
+
+        // Validar que la suma de maximoPuntaje sea exactamente 100
+        const sumaTotal = subCalificaciones.reduce(
+          (sum, sub) => sum + (Number(sub.maximoPuntaje) || 0),
+          0
+        );
+
+        if (sumaTotal !== 100) {
+          throw new Error(
+            `La suma de los puntajes máximos debe ser 100. Suma actual: ${sumaTotal}`
+          );
+        }
+
+        // Validar que todos los puntajes sean positivos
+        const puntajesInvalidos = subCalificaciones.filter(
+          (sub) => !sub.maximoPuntaje || Number(sub.maximoPuntaje) <= 0
+        );
+        if (puntajesInvalidos.length > 0) {
+          throw new Error(
+            "Todas las subcalificaciones deben tener un puntaje máximo mayor a 0"
+          );
+        }
+
+        // Crear el TipoCalificacion
+        const tipoCalificacion = await db.TipoCalificacion.create(
+          {
+            nombre: nombre || "Criterios de Evaluación",
+            fechaCreacion: new Date(),
+            fechaActualizacion: new Date(),
+          },
+          { transaction }
+        );
+
+        idTipoCalificacionCreado = tipoCalificacion.idTipoCalificacion;
+
+        // Crear las SubCalificaciones
+        const subCalificacionesData = subCalificaciones.map((sub) => ({
+          nombre: sub.nombre,
+          maximoPuntaje: Number(sub.maximoPuntaje),
+          idTipoCalificacion: tipoCalificacion.idTipoCalificacion,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date(),
+        }));
+
+        await db.SubCalificacion.bulkCreate(subCalificacionesData, {
+          transaction,
+        });
+      }
+
+      // 2. Crear la feria
       const feria = await Feria.create(
         {
           nombre: data.nombre,
           semestre: data.semestre,
           año: data.año,
           estaActivo: data.estaActivo !== undefined ? data.estaActivo : true,
+          idTipoCalificacion: idTipoCalificacionCreado,
           fechaCreacion: new Date(),
           fechaActualizacion: new Date(),
         },
         { transaction }
       );
 
-      // 2. Crear las tareas asociadas si existen
+      // 3. Crear las tareas asociadas si existen
       if (data.tareas && Array.isArray(data.tareas) && data.tareas.length > 0) {
         // VALIDACIÓN: Solo una tarea puede ser final
         const tareasFinal = data.tareas.filter((t) => t.esFinal === true);
@@ -46,7 +112,7 @@ const feriaService = {
 
       await transaction.commit();
 
-      // 3. Retornar la feria con sus tareas
+      // 4. Retornar la feria con sus tareas y tipo de calificación completo
       const feriaCompleta = await Feria.findByPk(feria.idFeria, {
         include: [
           {
@@ -59,6 +125,18 @@ const feriaService = {
               "fechaLimite",
               "orden",
               "esFinal",
+            ],
+          },
+          {
+            model: db.TipoCalificacion,
+            as: "tipoCalificacion",
+            attributes: ["idTipoCalificacion", "nombre"],
+            include: [
+              {
+                model: db.SubCalificacion,
+                as: "subCalificaciones",
+                attributes: ["idSubCalificacion", "nombre", "maximoPuntaje"],
+              },
             ],
           },
         ],
@@ -90,6 +168,18 @@ const feriaService = {
               "fechaLimite",
               "orden",
               "esFinal",
+            ],
+          },
+          {
+            model: db.TipoCalificacion,
+            as: "tipoCalificacion",
+            attributes: ["idTipoCalificacion", "nombre"],
+            include: [
+              {
+                model: db.SubCalificacion,
+                as: "subCalificaciones",
+                attributes: ["idSubCalificacion", "nombre", "maximoPuntaje"],
+              },
             ],
           },
         ],
@@ -136,7 +226,94 @@ const feriaService = {
         throw new Error("Feria no encontrada");
       }
 
-      // 1. Actualizar datos básicos
+      let nuevoIdTipoCalificacion = feria.idTipoCalificacion;
+
+      // 1. Actualizar o crear TipoCalificacion si se proporciona
+      if (data.tipoCalificacion) {
+        const { nombre, subCalificaciones } = data.tipoCalificacion;
+
+        // Validar que exista al menos una subcalificación
+        if (
+          !subCalificaciones ||
+          !Array.isArray(subCalificaciones) ||
+          subCalificaciones.length === 0
+        ) {
+          throw new Error(
+            "El tipo de calificación debe tener al menos una subcalificación"
+          );
+        }
+
+        // Validar que la suma de maximoPuntaje sea exactamente 100
+        const sumaTotal = subCalificaciones.reduce(
+          (sum, sub) => sum + (Number(sub.maximoPuntaje) || 0),
+          0
+        );
+
+        if (sumaTotal !== 100) {
+          throw new Error(
+            `La suma de los puntajes máximos debe ser 100. Suma actual: ${sumaTotal}`
+          );
+        }
+
+        // Validar que todos los puntajes sean positivos
+        const puntajesInvalidos = subCalificaciones.filter(
+          (sub) => !sub.maximoPuntaje || Number(sub.maximoPuntaje) <= 0
+        );
+        if (puntajesInvalidos.length > 0) {
+          throw new Error(
+            "Todas las subcalificaciones deben tener un puntaje máximo mayor a 0"
+          );
+        }
+
+        // Si ya existe un TipoCalificacion, eliminar las subcalificaciones antiguas
+        if (feria.idTipoCalificacion) {
+          await db.SubCalificacion.destroy({
+            where: { idTipoCalificacion: feria.idTipoCalificacion },
+            transaction,
+          });
+
+          // Actualizar el tipo de calificación existente
+          await db.TipoCalificacion.update(
+            {
+              nombre: nombre || "Criterios de Evaluación",
+              fechaActualizacion: new Date(),
+            },
+            {
+              where: { idTipoCalificacion: feria.idTipoCalificacion },
+              transaction,
+            }
+          );
+
+          nuevoIdTipoCalificacion = feria.idTipoCalificacion;
+        } else {
+          // Crear nuevo TipoCalificacion
+          const tipoCalificacion = await db.TipoCalificacion.create(
+            {
+              nombre: nombre || "Criterios de Evaluación",
+              fechaCreacion: new Date(),
+              fechaActualizacion: new Date(),
+            },
+            { transaction }
+          );
+
+          nuevoIdTipoCalificacion = tipoCalificacion.idTipoCalificacion;
+        }
+
+        // Crear las nuevas SubCalificaciones
+        const subCalificacionesData = subCalificaciones.map((sub) => ({
+          nombre: sub.nombre,
+          maximoPuntaje: Number(sub.maximoPuntaje),
+          idTipoCalificacion: nuevoIdTipoCalificacion,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date(),
+        }));
+
+        await db.SubCalificacion.bulkCreate(subCalificacionesData, {
+          transaction,
+        });
+      }
+
+      // 2. Actualizar datos básicos de la feria
       await feria.update(
         {
           nombre: data.nombre || feria.nombre,
@@ -145,12 +322,13 @@ const feriaService = {
           año: data.año || feria.año,
           estaActivo:
             data.estaActivo !== undefined ? data.estaActivo : feria.estaActivo,
+          idTipoCalificacion: nuevoIdTipoCalificacion,
           fechaActualizacion: new Date(),
         },
         { transaction }
       );
 
-      // 2. Actualizar Tareas si se proporcionan
+      // 3. Actualizar Tareas si se proporcionan
       if (data.tareas && Array.isArray(data.tareas)) {
         const tareasActuales = await db.Tarea.findAll({
           where: { idFeria },
@@ -235,19 +413,82 @@ const feriaService = {
 
   /**
    * Eliminar una feria
+   * Elimina en cascada: Revisiones → Tareas → SubCalificaciones → TipoCalificacion → Feria
    */
   async eliminarFeria(idFeria) {
+    const transaction = await db.sequelize.transaction();
     try {
-      const feria = await Feria.findByPk(idFeria);
+      const feria = await Feria.findByPk(idFeria, {
+        include: [
+          {
+            model: db.Tarea,
+            as: "tareas",
+          },
+        ],
+        transaction,
+      });
 
       if (!feria) {
+        await transaction.rollback();
         throw new Error("Feria no encontrada");
       }
 
-      await feria.destroy();
+      const idTipoCalificacion = feria.idTipoCalificacion;
 
-      return { mensaje: "Feria eliminada exitosamente" };
+      // 1. Eliminar todas las revisiones de las tareas de esta feria
+      if (feria.tareas && feria.tareas.length > 0) {
+        const idsTareas = feria.tareas.map((t) => t.idTarea);
+
+        await db.Revision.destroy({
+          where: { idTarea: idsTareas },
+          transaction,
+        });
+
+        console.log(`✅ Revisiones de las tareas eliminadas`);
+      }
+
+      // 2. Eliminar todas las tareas de la feria (CASCADE ya maneja esto, pero por si acaso)
+      await db.Tarea.destroy({
+        where: { idFeria },
+        transaction,
+      });
+
+      console.log(`✅ Tareas de la feria eliminadas`);
+
+      // 3. Eliminar la feria
+      await feria.destroy({ transaction });
+
+      console.log(`✅ Feria eliminada`);
+
+      // 4. Eliminar el TipoCalificacion y sus SubCalificaciones si existe
+      if (idTipoCalificacion) {
+        // Primero eliminar subcalificaciones (CASCADE ya lo maneja, pero por claridad)
+        await db.SubCalificacion.destroy({
+          where: { idTipoCalificacion },
+          transaction,
+        });
+
+        // Luego eliminar el tipo de calificación
+        await db.TipoCalificacion.destroy({
+          where: { idTipoCalificacion },
+          transaction,
+        });
+
+        console.log(`✅ TipoCalificacion y SubCalificaciones eliminados`);
+      }
+
+      await transaction.commit();
+
+      return {
+        mensaje: "Feria eliminada exitosamente",
+        detalles: {
+          feriaEliminada: true,
+          tareasEliminadas: feria.tareas?.length || 0,
+          tipoCalificacionEliminado: !!idTipoCalificacion,
+        },
+      };
     } catch (error) {
+      await transaction.rollback();
       console.error("Error en eliminarFeria:", error);
       throw error;
     }

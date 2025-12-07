@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
   const TipoCalificacion = sequelize.define(
-    'TipoCalificacion',
+    "TipoCalificacion",
     {
       idTipoCalificacion: {
         type: DataTypes.UUID,
@@ -22,7 +22,7 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'TipoCalificacion',
+      tableName: "TipoCalificacion",
       freezeTableName: true,
       timestamps: false,
     }
@@ -31,10 +31,10 @@ module.exports = (sequelize, DataTypes) => {
   TipoCalificacion.associate = (models) => {
     // Relación 1 a muchos con SubCalificacion
     TipoCalificacion.hasMany(models.SubCalificacion, {
-      as: 'subCalificaciones',
-      foreignKey: { name: 'idTipoCalificacion', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "subCalificaciones",
+      foreignKey: { name: "idTipoCalificacion", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
   };
 

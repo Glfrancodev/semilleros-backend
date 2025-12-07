@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
   const Calificacion = sequelize.define(
-    'Calificacion',
+    "Calificacion",
     {
       idCalificacion: {
         type: DataTypes.UUID,
@@ -12,6 +12,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: { min: 0 },
       },
+      calificado: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        allowNull: false,
+      },
       fechaCreacion: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
@@ -22,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'Calificacion',
+      tableName: "Calificacion",
       freezeTableName: true,
       timestamps: false,
     }
@@ -31,18 +36,18 @@ module.exports = (sequelize, DataTypes) => {
   Calificacion.associate = (models) => {
     // FK -> SubCalificacion (1 a 1)
     Calificacion.belongsTo(models.SubCalificacion, {
-      as: 'subCalificacion',
-      foreignKey: { name: 'idSubCalificacion', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "subCalificacion",
+      foreignKey: { name: "idSubCalificacion", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
 
     // FK -> DocenteProyecto (1 a 1)
     Calificacion.belongsTo(models.DocenteProyecto, {
-      as: 'docenteProyecto',
-      foreignKey: { name: 'idDocenteProyecto', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "docenteProyecto",
+      foreignKey: { name: "idDocenteProyecto", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
   };
 

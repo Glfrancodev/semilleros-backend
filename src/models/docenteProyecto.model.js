@@ -1,16 +1,11 @@
 module.exports = (sequelize, DataTypes) => {
   const DocenteProyecto = sequelize.define(
-    'DocenteProyecto',
+    "DocenteProyecto",
     {
       idDocenteProyecto: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
-      },
-      esTutor: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
       },
       fechaCreacion: {
         type: DataTypes.DATE,
@@ -22,7 +17,7 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'DocenteProyecto',
+      tableName: "DocenteProyecto",
       freezeTableName: true,
       timestamps: false,
     }
@@ -31,26 +26,26 @@ module.exports = (sequelize, DataTypes) => {
   DocenteProyecto.associate = (models) => {
     // FK -> Docente
     DocenteProyecto.belongsTo(models.Docente, {
-      as: 'docente',
-      foreignKey: { name: 'idDocente', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "docente",
+      foreignKey: { name: "idDocente", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
 
     // FK -> Proyecto
     DocenteProyecto.belongsTo(models.Proyecto, {
-      as: 'proyecto',
-      foreignKey: { name: 'idProyecto', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "proyecto",
+      foreignKey: { name: "idProyecto", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
 
     // Relación 0 a muchos con Calificacion
     DocenteProyecto.hasMany(models.Calificacion, {
-      as: 'calificaciones',
-      foreignKey: { name: 'idDocenteProyecto', allowNull: false },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      as: "calificaciones",
+      foreignKey: { name: "idDocenteProyecto", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     });
   };
 

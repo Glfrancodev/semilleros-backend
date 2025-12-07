@@ -77,6 +77,12 @@ router.get(
   proyectoController.obtenerInvitacionesProyecto
 );
 
+// GET /api/proyectos/:idProyecto/nota-promedio - Obtener nota promedio del proyecto
+router.get(
+  "/:idProyecto/nota-promedio",
+  proyectoController.obtenerNotaPromedioProyecto
+);
+
 // PUT /api/proyectos/:idProyecto/aprobar-tutor - Actualizar aprobación del tutor
 router.put(
   "/:idProyecto/aprobar-tutor",

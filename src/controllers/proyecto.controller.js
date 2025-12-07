@@ -441,6 +441,32 @@ const proyectoController = {
       });
     }
   },
+
+  /**
+   * GET /api/proyectos/:idProyecto/nota-promedio
+   * Obtener la nota promedio de un proyecto
+   */
+  async obtenerNotaPromedioProyecto(req, res) {
+    try {
+      const { idProyecto } = req.params;
+      const resultado = await proyectoService.obtenerNotaPromedioProyecto(
+        idProyecto
+      );
+
+      return res.success("Nota promedio obtenida exitosamente", resultado);
+    } catch (error) {
+      console.error("Error al obtener nota promedio:", error);
+
+      if (error.message === "Proyecto no encontrado") {
+        return res.notFound("Proyecto");
+      }
+
+      return res.error("Error al obtener la nota promedio", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
 };
 
 module.exports = proyectoController;
