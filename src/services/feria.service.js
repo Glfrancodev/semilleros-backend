@@ -718,6 +718,254 @@ const feriaService = {
       throw error;
     }
   },
+
+  /**
+   * Finalizar una feria y calcular ganadores automáticamente
+   * @param {string} idFeria - ID de la feria
+   * @returns {Promise<Object>} - Feria actualizada con ganadores
+   */
+  async finalizarFeria(idFeria) {
+    const transaction = await db.sequelize.transaction();
+    try {
+      // 1. Verificar que la feria existe
+      const feria = await Feria.findByPk(idFeria);
+      if (!feria) {
+        throw new Error("Feria no encontrada");
+      }
+
+      if (feria.estaFinalizado) {
+        throw new Error("La feria ya está finalizada");
+      }
+
+      // 2. Obtener todas las áreas y categorías
+      const areas = await db.Area.findAll({
+        include: [
+          {
+            model: db.AreaCategoria,
+            as: "areaCategorias",
+            include: [
+              {
+                model: db.Categoria,
+                as: "categoria",
+                attributes: ["idCategoria", "nombre"],
+              },
+            ],
+          },
+        ],
+      });
+
+      // 3. Obtener todos los proyectos de la feria con sus calificaciones
+      const proyectos = await Proyecto.findAll({
+        include: [
+          {
+            model: db.Revision,
+            as: "revisiones",
+            required: true,
+            include: [
+              {
+                model: db.Tarea,
+                as: "tarea",
+                required: true,
+                where: { idFeria },
+              },
+            ],
+          },
+          {
+            model: db.DocenteProyecto,
+            as: "docentesProyecto",
+            required: false,
+            include: [
+              {
+                model: db.Calificacion,
+                as: "calificaciones",
+                where: { calificado: true },
+                required: false,
+              },
+            ],
+          },
+          {
+            model: db.EstudianteProyecto,
+            as: "estudiantesProyecto",
+            required: false,
+            include: [
+              {
+                model: db.Estudiante,
+                as: "estudiante",
+                attributes: ["idEstudiante"],
+                include: [
+                  {
+                    model: db.Usuario,
+                    as: "usuario",
+                    attributes: ["nombre", "apellido"],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            model: db.GrupoMateria,
+            as: "grupoMateria",
+            required: true,
+            include: [
+              {
+                model: db.Materia,
+                as: "materia",
+                include: [
+                  {
+                    model: db.AreaCategoria,
+                    as: "areaCategoria",
+                    include: [
+                      {
+                        model: db.Area,
+                        as: "area",
+                        attributes: ["idArea", "nombre"],
+                      },
+                      {
+                        model: db.Categoria,
+                        as: "categoria",
+                        attributes: ["idCategoria", "nombre"],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      // 4. Calcular nota promedio para cada proyecto
+      const proyectosConNota = proyectos
+        .map((proyecto) => {
+          const jurados = proyecto.docentesProyecto || [];
+          const notasJurados = [];
+
+          for (const jurado of jurados) {
+            if (jurado.calificaciones && jurado.calificaciones.length > 0) {
+              const totalPuntaje = jurado.calificaciones.reduce(
+                (sum, cal) => sum + cal.puntajeObtenido,
+                0
+              );
+              notasJurados.push(totalPuntaje);
+            }
+          }
+
+          let notaPromedio = null;
+          if (notasJurados.length > 0) {
+            notaPromedio =
+              notasJurados.reduce((sum, nota) => sum + nota, 0) /
+              notasJurados.length;
+            notaPromedio = Math.round(notaPromedio * 100) / 100;
+          }
+
+          // Extraer área y categoría del proyecto
+          const areaCategoria =
+            proyecto.grupoMateria?.materia?.areaCategoria || null;
+          const area = areaCategoria?.area || null;
+          const categoria = areaCategoria?.categoria || null;
+
+          // Extraer integrantes
+          const integrantes = (proyecto.estudiantesProyecto || []).map(
+            (ep) => ({
+              idEstudiante: ep.estudiante?.idEstudiante || null,
+              nombreCompleto: ep.estudiante?.usuario
+                ? `${ep.estudiante.usuario.nombre} ${ep.estudiante.usuario.apellido}`
+                : "Sin nombre",
+            })
+          );
+
+          return {
+            idProyecto: proyecto.idProyecto,
+            nombreProyecto: proyecto.nombre,
+            notaPromedio,
+            area,
+            categoria,
+            integrantes,
+          };
+        })
+        .filter((p) => p.notaPromedio !== null && p.area && p.categoria); // Solo proyectos con nota y área/categoría
+
+      // 5. Organizar ganadores por área y categoría
+      const ganadores = {};
+
+      areas.forEach((area) => {
+        const nombreArea = area.nombre;
+        ganadores[nombreArea] = {};
+
+        area.areaCategorias.forEach((ac) => {
+          const categoria = ac.categoria;
+          const nombreCategoria = categoria.nombre;
+
+          // Filtrar proyectos de esta área-categoría
+          const proyectosDeCategoria = proyectosConNota.filter(
+            (p) =>
+              p.area.idArea === area.idArea &&
+              p.categoria.idCategoria === categoria.idCategoria
+          );
+
+          // Ordenar por nota promedio descendente
+          proyectosDeCategoria.sort((a, b) => b.notaPromedio - a.notaPromedio);
+
+          // Tomar los 3 primeros lugares
+          const primerLugar = proyectosDeCategoria[0] || null;
+          const segundoLugar = proyectosDeCategoria[1] || null;
+          const tercerLugar = proyectosDeCategoria[2] || null;
+
+          ganadores[nombreArea][nombreCategoria] = {
+            primerLugar: primerLugar
+              ? {
+                  proyecto: {
+                    idProyecto: primerLugar.idProyecto,
+                    nombreProyecto: primerLugar.nombreProyecto,
+                    notaPromedio: primerLugar.notaPromedio,
+                    integrantes: primerLugar.integrantes,
+                  },
+                }
+              : null,
+            segundoLugar: segundoLugar
+              ? {
+                  proyecto: {
+                    idProyecto: segundoLugar.idProyecto,
+                    nombreProyecto: segundoLugar.nombreProyecto,
+                    notaPromedio: segundoLugar.notaPromedio,
+                    integrantes: segundoLugar.integrantes,
+                  },
+                }
+              : null,
+            tercerLugar: tercerLugar
+              ? {
+                  proyecto: {
+                    idProyecto: tercerLugar.idProyecto,
+                    nombreProyecto: tercerLugar.nombreProyecto,
+                    notaPromedio: tercerLugar.notaPromedio,
+                    integrantes: tercerLugar.integrantes,
+                  },
+                }
+              : null,
+          };
+        });
+      });
+
+      // 6. Actualizar la feria
+      feria.estaFinalizado = true;
+      feria.ganadores = ganadores;
+      feria.fechaActualizacion = new Date();
+      await feria.save({ transaction });
+
+      await transaction.commit();
+
+      return {
+        idFeria: feria.idFeria,
+        nombre: feria.nombre,
+        estaFinalizado: feria.estaFinalizado,
+        ganadores: feria.ganadores,
+      };
+    } catch (error) {
+      await transaction.rollback();
+      console.error("Error en finalizarFeria:", error);
+      throw error;
+    }
+  },
 };
 
 module.exports = feriaService;

@@ -209,6 +209,41 @@ const feriaController = {
       });
     }
   },
+
+  /**
+   * POST /api/ferias/:idFeria/finalizar
+   * Finalizar una feria y calcular ganadores automáticamente
+   */
+  async finalizarFeria(req, res) {
+    try {
+      const { idFeria } = req.params;
+
+      const resultado = await feriaService.finalizarFeria(idFeria);
+
+      return res.success(
+        "Feria finalizada exitosamente. Ganadores calculados.",
+        resultado
+      );
+    } catch (error) {
+      console.error("Error al finalizar feria:", error);
+
+      if (error.message === "Feria no encontrada") {
+        return res.notFound("Feria");
+      }
+
+      if (error.message === "La feria ya está finalizada") {
+        return res.error("La feria ya está finalizada", 400, {
+          code: "ALREADY_FINALIZED",
+          details: error.message,
+        });
+      }
+
+      return res.error("Error al finalizar la feria", 500, {
+        code: "FINALIZE_ERROR",
+        details: error.message,
+      });
+    }
+  },
 };
 
 module.exports = feriaController;
