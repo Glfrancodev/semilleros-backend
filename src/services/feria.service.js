@@ -629,8 +629,6 @@ const feriaService = {
    */
   async obtenerFeriaActiva() {
     try {
-      const { QueryTypes } = require("sequelize");
-
       // Buscar la feria con estado = 'Activo'
       const feria = await Feria.findOne({
         where: { estado: "Activo" },
@@ -649,37 +647,57 @@ const feriaService = {
         return null;
       }
 
-      // Obtener estadísticas de proyectos relacionados a esta feria
-      // Los proyectos están vinculados a través de: Proyecto -> GrupoMateria -> Materia -> Semestre -> Feria
-      const [estadisticas] = await db.sequelize.query(
-        `
-        SELECT 
-          COUNT(DISTINCT p."idProyecto") as "cantidadProyectosInscritos",
-          COUNT(DISTINCT CASE WHEN p."estaAprobado" IS NULL THEN p."idProyecto" END) as "cantidadProyectosPendientesAprobacion",
-          COUNT(DISTINCT CASE WHEN p."estaAprobado" = true THEN p."idProyecto" END) as "cantidadProyectosAprobados",
-          COUNT(DISTINCT CASE WHEN p."esFinal" = true THEN p."idProyecto" END) as "cantidadProyectosFinales"
-        FROM "Proyecto" p
-        INNER JOIN "GrupoMateria" gm ON p."idGrupoMateria" = gm."idGrupoMateria"
-        INNER JOIN "Materia" m ON gm."idMateria" = m."idMateria"
-        INNER JOIN "Semestre" s ON m."idSemestre" = s."idSemestre"
-        WHERE s."idFeria" = :idFeria
-        `,
-        {
-          replacements: { idFeria: feria.idFeria },
-          type: QueryTypes.SELECT,
-        }
+      // Obtener todas las revisiones de la feria para calcular estadísticas
+      // Usar la misma lógica que obtenerResumenFeriaActiva() para consistencia
+      const revisiones = await db.Revision.findAll({
+        include: [
+          {
+            model: db.Tarea,
+            as: "tarea",
+            where: { idFeria: feria.idFeria },
+            attributes: ["idTarea", "orden"],
+          },
+          {
+            model: db.Proyecto,
+            as: "proyecto",
+            attributes: ["idProyecto", "estaAprobado", "esFinal"],
+          },
+        ],
+      });
+
+      // Calcular estadísticas basadas en revisiones de la tarea de inscripción (orden 0)
+      const proyectosInscritos = new Set(
+        revisiones.filter((r) => r.tarea.orden === 0).map((r) => r.idProyecto)
+      );
+
+      const proyectosPendAprob = new Set(
+        revisiones
+          .filter(
+            (r) => r.tarea.orden === 0 && r.proyecto.estaAprobado === null
+          )
+          .map((r) => r.idProyecto)
+      );
+
+      const proyectosAprobados = new Set(
+        revisiones
+          .filter(
+            (r) => r.tarea.orden === 0 && r.proyecto.estaAprobado === true
+          )
+          .map((r) => r.idProyecto)
+      );
+
+      const proyectosFinales = new Set(
+        revisiones
+          .filter((r) => r.tarea.orden === 0 && r.proyecto.esFinal === true)
+          .map((r) => r.idProyecto)
       );
 
       const feriaConEstadisticas = {
         ...feria.toJSON(),
-        cantidadProyectosInscritos:
-          parseInt(estadisticas.cantidadProyectosInscritos) || 0,
-        cantidadProyectosPendientesAprobacion:
-          parseInt(estadisticas.cantidadProyectosPendientesAprobacion) || 0,
-        cantidadProyectosAprobados:
-          parseInt(estadisticas.cantidadProyectosAprobados) || 0,
-        cantidadProyectosFinales:
-          parseInt(estadisticas.cantidadProyectosFinales) || 0,
+        cantidadProyectosInscritos: proyectosInscritos.size,
+        cantidadProyectosPendientesAprobacion: proyectosPendAprob.size,
+        cantidadProyectosAprobados: proyectosAprobados.size,
+        cantidadProyectosFinales: proyectosFinales.size,
       };
 
       return feriaConEstadisticas;

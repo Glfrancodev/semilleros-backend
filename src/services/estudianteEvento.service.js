@@ -1,7 +1,19 @@
-const { EstudianteEvento } = require('../models');
+const { EstudianteEvento } = require("../models");
 
 // Crear un nuevo EstudianteEvento
 const crearEstudianteEvento = async (datos) => {
+  // Verificar si ya existe una inscripción
+  const inscripcionExistente = await EstudianteEvento.findOne({
+    where: {
+      idEstudiante: datos.idEstudiante,
+      idEvento: datos.idEvento,
+    },
+  });
+
+  if (inscripcionExistente) {
+    throw new Error("El estudiante ya está inscrito en este evento");
+  }
+
   const fechaActual = new Date();
   return await EstudianteEvento.create({
     ...datos,
