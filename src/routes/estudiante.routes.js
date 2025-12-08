@@ -6,6 +6,18 @@ const { validarToken } = require("../middleware/authMiddleware");
 // Ruta para obtener el leaderboard de estudiantes
 router.get("/leaderboard", estudianteController.obtenerLeaderboard);
 
+// Ruta pública para obtener perfil de un estudiante
+router.get(
+  "/:idEstudiante/perfil-publico",
+  estudianteController.obtenerPerfilPublico
+);
+
+// Ruta pública para obtener proyectos de un estudiante
+router.get(
+  "/:idEstudiante/proyectos",
+  estudianteController.obtenerProyectosEstudiante
+);
+
 // Ruta para crear un nuevo Estudiante
 router.post("/", estudianteController.crearEstudiante);
 

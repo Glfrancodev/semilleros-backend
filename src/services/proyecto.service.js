@@ -171,6 +171,20 @@ const proyectoService = {
         throw new Error("Proyecto no encontrado");
       }
 
+      // Determinar el nuevo valor de esFinal
+      const nuevoEsFinal =
+        data.esFinal !== undefined ? data.esFinal : proyecto.esFinal;
+
+      // Si el proyecto es o será esFinal, esPublico debe ser true obligatoriamente
+      let nuevoEsPublico;
+      if (nuevoEsFinal === true) {
+        nuevoEsPublico = true; // Forzar a público si es proyecto final
+      } else {
+        // Solo permitir cambiar esPublico si NO es proyecto final
+        nuevoEsPublico =
+          data.esPublico !== undefined ? data.esPublico : proyecto.esPublico;
+      }
+
       await proyecto.update({
         nombre: data.nombre || proyecto.nombre,
         descripcion: data.descripcion || proyecto.descripcion,
@@ -179,9 +193,8 @@ const proyectoService = {
           data.estaAprobado !== undefined
             ? data.estaAprobado
             : proyecto.estaAprobada,
-        esFinal: data.esFinal !== undefined ? data.esFinal : proyecto.esFinal,
-        esPublico:
-          data.esPublico !== undefined ? data.esPublico : proyecto.esPublico,
+        esFinal: nuevoEsFinal,
+        esPublico: nuevoEsPublico,
         idGrupoMateria: data.idGrupoMateria || proyecto.idGrupoMateria,
         fechaActualizacion: new Date(),
       });
@@ -409,6 +422,7 @@ const proyectoService = {
         nombreCompleto: `${ep.estudiante.usuario.nombre} ${ep.estudiante.usuario.apellido}`,
         esLider: ep.esLider || false,
         idUsuario: ep.estudiante.usuario.idUsuario,
+        idEstudiante: ep.estudiante.idEstudiante,
       }));
 
       return integrantes;
@@ -708,13 +722,23 @@ const proyectoService = {
     try {
       const { QueryTypes } = require("sequelize");
 
+      // Primero verificar si hay feria activa
+      const feriaActiva = await db.Feria.findOne({
+        where: { estado: "Activo" },
+        attributes: ["idFeria"],
+      });
+
+      if (!feriaActiva) {
+        throw new Error("No hay feria activa");
+      }
+
       // Consulta SQL única optimizada con todos los datos necesarios
       const resultado = await db.sequelize.query(
         `
         WITH FeriaActiva AS (
           SELECT "idFeria" 
           FROM "Feria" 
-          WHERE "estaActivo" = true 
+          WHERE "estado" = 'Activo' 
           LIMIT 1
         ),
         ProyectosAprobados AS (
@@ -795,7 +819,7 @@ const proyectoService = {
 
       // Obtener feria activa
       const feriaActiva = await db.Feria.findOne({
-        where: { estaActivo: true },
+        where: { estado: "Activo" },
       });
 
       if (!feriaActiva) {
@@ -906,7 +930,7 @@ const proyectoService = {
               {
                 model: db.Feria,
                 as: "feria",
-                attributes: ["idFeria", "estaFinalizado"],
+                attributes: ["idFeria", "estado"],
               },
             ],
           },
@@ -916,7 +940,7 @@ const proyectoService = {
       // Verificar si la feria está finalizada
       let feriaFinalizada = false;
       if (revision && revision.tarea && revision.tarea.feria) {
-        feriaFinalizada = revision.tarea.feria.estaFinalizado || false;
+        feriaFinalizada = revision.tarea.feria.estado === "Finalizado";
       }
 
       console.log("🔍 Debug nota promedio:", {

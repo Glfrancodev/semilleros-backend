@@ -373,6 +373,13 @@ const proyectoController = {
       );
     } catch (error) {
       console.error("Error al obtener proyectos aprobados para feria:", error);
+      // Si no hay feria activa, devolver respuesta 404
+      if (error.message === "No hay feria activa") {
+        return res.error("No hay feria activa", 404, {
+          code: "NO_ACTIVE_FERIA",
+          details: error.message,
+        });
+      }
       return res.error(
         "Error al obtener los proyectos aprobados para feria",
         500,

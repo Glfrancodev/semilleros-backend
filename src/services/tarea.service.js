@@ -52,9 +52,9 @@ const tareaService = {
         where: { orden: 0 },
         include: [
           {
-            model: Feria,
+            model: db.Feria,
             as: "feria",
-            attributes: ["idFeria", "nombre", "semestre", "año", "estaActivo"],
+            attributes: ["idFeria", "nombre", "semestre", "año", "estado"],
           },
         ],
         order: [["fechaLimite", "ASC"]],
@@ -84,7 +84,7 @@ const tareaService = {
               "descripcion",
               "semestre",
               "año",
-              "estaActivo",
+              "estado",
             ],
           },
         ],

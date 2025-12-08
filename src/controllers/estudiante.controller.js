@@ -120,16 +120,64 @@ const eliminarEstudiante = async (req, res, next) => {
  */
 const obtenerLeaderboard = async (req, res) => {
   try {
+    console.log("🎯 [CONTROLLER] Solicitud de leaderboard recibida");
     const limite = Math.min(parseInt(req.query.limite) || 10, 50);
+    console.log("🎯 [CONTROLLER] Límite:", limite);
     const leaderboard = await estudianteService.obtenerLeaderboard(limite);
+    console.log(
+      "🎯 [CONTROLLER] Leaderboard obtenido:",
+      leaderboard.length,
+      "estudiantes"
+    );
 
     return res.success("Leaderboard obtenido exitosamente", {
       count: leaderboard.length,
       items: leaderboard,
     });
   } catch (err) {
-    console.error("Error al obtener leaderboard:", err);
+    console.error("🎯 [CONTROLLER] ❌ Error al obtener leaderboard:", err);
     return res.error("Error al obtener el leaderboard de estudiantes", 500, {
+      code: "FETCH_ERROR",
+      details: err.message,
+    });
+  }
+};
+
+// Obtener perfil público de un estudiante
+const obtenerPerfilPublico = async (req, res, next) => {
+  try {
+    const { idEstudiante } = req.params;
+    const perfil = await estudianteService.obtenerPerfilPublico(idEstudiante);
+
+    if (!perfil) {
+      return res.notFound("Perfil del estudiante");
+    }
+
+    return res.success("Perfil público obtenido exitosamente", perfil);
+  } catch (err) {
+    console.error("Error al obtener perfil público:", err);
+    return res.error("Error al obtener el perfil público del estudiante", 500, {
+      code: "FETCH_ERROR",
+      details: err.message,
+    });
+  }
+};
+
+// Obtener proyectos de un estudiante
+const obtenerProyectosEstudiante = async (req, res, next) => {
+  try {
+    const { idEstudiante } = req.params;
+    const proyectos = await estudianteService.obtenerProyectosEstudiante(
+      idEstudiante
+    );
+
+    return res.success("Proyectos obtenidos exitosamente", {
+      count: proyectos.length,
+      items: proyectos,
+    });
+  } catch (err) {
+    console.error("Error al obtener proyectos del estudiante:", err);
+    return res.error("Error al obtener los proyectos del estudiante", 500, {
       code: "FETCH_ERROR",
       details: err.message,
     });
@@ -144,4 +192,6 @@ module.exports = {
   actualizarEstudiante,
   eliminarEstudiante,
   obtenerLeaderboard,
+  obtenerPerfilPublico,
+  obtenerProyectosEstudiante,
 };

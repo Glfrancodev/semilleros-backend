@@ -22,15 +22,10 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: { min: 2000 },
       },
-      estaActivo: {
-        type: DataTypes.BOOLEAN,
+      estado: {
+        type: DataTypes.ENUM("Borrador", "Activo", "Finalizado"),
         allowNull: false,
-        defaultValue: true,
-      },
-      estaFinalizado: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
+        defaultValue: "Activo",
       },
       ganadores: {
         type: DataTypes.JSONB,

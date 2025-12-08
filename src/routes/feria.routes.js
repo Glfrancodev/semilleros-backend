@@ -24,6 +24,12 @@ router.put("/:idFeria", feriaController.actualizarFeria);
 // POST /api/ferias/:idFeria/finalizar - Finalizar feria y calcular ganadores
 router.post("/:idFeria/finalizar", feriaController.finalizarFeria);
 
+// GET /api/ferias/:idFeria/proyectos-finales - Obtener proyectos finales de la feria
+router.get(
+  "/:idFeria/proyectos-finales",
+  feriaController.obtenerProyectosFinalesFeria
+);
+
 // DELETE /api/ferias/:idFeria - Eliminar feria
 router.delete("/:idFeria", feriaController.eliminarFeria);
 

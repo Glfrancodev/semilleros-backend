@@ -1,4 +1,5 @@
 const db = require("../models");
+const { Op } = require("sequelize");
 const Feria = db.Feria;
 const Proyecto = db.Proyecto;
 
@@ -9,6 +10,20 @@ const feriaService = {
   async crearFeria(data) {
     const transaction = await db.sequelize.transaction();
     try {
+      // 0. Validar que no exista una feria activa si se intenta crear una feria activa
+      if (data.estado === "Activo" || !data.estado) {
+        const feriaActiva = await Feria.findOne({
+          where: { estado: "Activo" },
+          attributes: ["idFeria", "nombre"],
+        });
+
+        if (feriaActiva) {
+          throw new Error(
+            `Ya existe una feria activa: "${feriaActiva.nombre}". No se puede crear otra feria activa.`
+          );
+        }
+      }
+
       let idTipoCalificacionCreado = null;
 
       // 1. Validar y crear TipoCalificacion con SubCalificaciones si se proporciona
@@ -80,7 +95,7 @@ const feriaService = {
           nombre: data.nombre,
           semestre: data.semestre,
           año: data.año,
-          estaActivo: data.estaActivo !== undefined ? data.estaActivo : true,
+          estado: data.estado || "Activo",
           idTipoCalificacion: idTipoCalificacionCreado,
           fechaCreacion: new Date(),
           fechaActualizacion: new Date(),
@@ -320,8 +335,7 @@ const feriaService = {
           semestre:
             data.semestre !== undefined ? data.semestre : feria.semestre,
           año: data.año || feria.año,
-          estaActivo:
-            data.estaActivo !== undefined ? data.estaActivo : feria.estaActivo,
+          estado: data.estado !== undefined ? data.estado : feria.estado,
           idTipoCalificacion: nuevoIdTipoCalificacion,
           fechaActualizacion: new Date(),
         },
@@ -501,7 +515,7 @@ const feriaService = {
     try {
       // 1. Obtener la feria activa
       const feria = await db.Feria.findOne({
-        where: { estaActivo: true },
+        where: { estado: "Activo" },
         include: [
           {
             model: db.Tarea,
@@ -617,15 +631,15 @@ const feriaService = {
     try {
       const { QueryTypes } = require("sequelize");
 
-      // Buscar la feria con estaActivo = true
+      // Buscar la feria con estado = 'Activo'
       const feria = await Feria.findOne({
-        where: { estaActivo: true },
+        where: { estado: "Activo" },
         attributes: [
           "idFeria",
           "nombre",
           "semestre",
           "año",
-          "estaActivo",
+          "estado",
           "fechaCreacion",
           "fechaActualizacion",
         ],
@@ -681,13 +695,13 @@ const feriaService = {
   async obtenerFeriasPasadas() {
     try {
       const ferias = await Feria.findAll({
-        where: { estaActivo: false },
+        where: { estado: { [Op.in]: ["Borrador", "Finalizado"] } },
         attributes: [
           "idFeria",
           "nombre",
           "semestre",
           "año",
-          "estaActivo",
+          "estado",
           "fechaCreacion",
           "fechaActualizacion",
         ],
@@ -733,7 +747,7 @@ const feriaService = {
         throw new Error("Feria no encontrada");
       }
 
-      if (feria.estaFinalizado) {
+      if (feria.estado === "Finalizado") {
         throw new Error("La feria ya está finalizada");
       }
 
@@ -947,7 +961,7 @@ const feriaService = {
       });
 
       // 6. Actualizar la feria
-      feria.estaFinalizado = true;
+      feria.estado = "Finalizado";
       feria.ganadores = ganadores;
       feria.fechaActualizacion = new Date();
       await feria.save({ transaction });
@@ -957,12 +971,123 @@ const feriaService = {
       return {
         idFeria: feria.idFeria,
         nombre: feria.nombre,
-        estaFinalizado: feria.estaFinalizado,
+        estado: feria.estado,
         ganadores: feria.ganadores,
       };
     } catch (error) {
       await transaction.rollback();
       console.error("Error en finalizarFeria:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener proyectos finales y calificados de una feria
+   */
+  async obtenerProyectosFinalesFeria(idFeria) {
+    try {
+      const feria = await Feria.findByPk(idFeria);
+      if (!feria) {
+        throw new Error("Feria no encontrada");
+      }
+
+      // Obtener todas las tareas de la feria
+      const tareas = await db.Tarea.findAll({
+        where: { idFeria },
+        attributes: ["idTarea", "esFinal"],
+      });
+
+      const idsTareas = tareas.map((t) => t.idTarea);
+
+      // Obtener proyectos finales con sus revisiones, integrantes y calificaciones
+      const proyectos = await Proyecto.findAll({
+        include: [
+          {
+            model: db.Revision,
+            as: "revisiones",
+            where: {
+              idTarea: { [Op.in]: idsTareas },
+            },
+            required: true,
+            attributes: ["idRevision", "idTarea"],
+          },
+          {
+            model: db.EstudianteProyecto,
+            as: "estudiantesProyecto",
+            include: [
+              {
+                model: db.Estudiante,
+                as: "estudiante",
+                include: [
+                  {
+                    model: db.Usuario,
+                    as: "usuario",
+                    attributes: ["idUsuario", "nombre", "apellido"],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            model: db.DocenteProyecto,
+            as: "docentesProyecto",
+            include: [
+              {
+                model: db.Calificacion,
+                as: "calificaciones",
+                attributes: ["puntajeObtenido", "calificado"],
+              },
+            ],
+          },
+        ],
+        where: {
+          esFinal: true,
+        },
+      });
+
+      // Calcular nota promedio para cada proyecto
+      const proyectosConNota = proyectos.map((proyecto) => {
+        const jurados = proyecto.docentesProyecto || [];
+        const notasJurados = [];
+
+        for (const jurado of jurados) {
+          if (jurado.calificaciones && jurado.calificaciones.length > 0) {
+            const totalPuntaje = jurado.calificaciones.reduce(
+              (sum, cal) => sum + cal.puntajeObtenido,
+              0
+            );
+            notasJurados.push(totalPuntaje);
+          }
+        }
+
+        let notaPromedio = null;
+        if (notasJurados.length > 0) {
+          notaPromedio =
+            notasJurados.reduce((sum, nota) => sum + nota, 0) /
+            notasJurados.length;
+          notaPromedio = Math.round(notaPromedio * 100) / 100;
+        }
+
+        // Extraer integrantes con solo nombres completos
+        const integrantes = (proyecto.estudiantesProyecto || []).map((ep) => ({
+          idEstudiante: ep.estudiante?.idEstudiante || null,
+          nombreCompleto: ep.estudiante?.usuario
+            ? `${ep.estudiante.usuario.nombre} ${ep.estudiante.usuario.apellido}`
+            : "Sin nombre",
+        }));
+        return {
+          idProyecto: proyecto.idProyecto,
+          nombre: proyecto.nombre,
+          descripcion: proyecto.descripcion,
+          notaPromedio,
+          integrantes,
+        };
+      });
+
+      // Filtrar solo proyectos con nota (calificados)
+      return proyectosConNota.filter((p) => p.notaPromedio !== null);
+    } catch (error) {
+      console.error("Error en obtenerProyectosFinalesFeria:", error);
       throw error;
     }
   },

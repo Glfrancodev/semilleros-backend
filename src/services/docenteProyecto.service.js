@@ -318,7 +318,7 @@ const docenteProyectoService = {
 
       // Buscar la feria activa
       const feriaActiva = await db.Feria.findOne({
-        where: { estaActivo: true },
+        where: { estado: "Activo" },
       });
 
       if (!feriaActiva) {

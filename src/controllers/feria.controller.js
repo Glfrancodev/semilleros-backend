@@ -44,6 +44,15 @@ const feriaController = {
       return res.success("Feria creada exitosamente", feria, 201);
     } catch (error) {
       console.error("Error al crear feria:", error);
+
+      // Si el error es por feria activa existente, devolver 409 Conflict
+      if (error.message.includes("Ya existe una feria activa")) {
+        return res.error(error.message, 409, {
+          code: "ACTIVE_FERIA_EXISTS",
+          details: error.message,
+        });
+      }
+
       return res.error("Error al crear la feria", 500, {
         code: "CREATE_ERROR",
         details: error.message,
@@ -160,6 +169,13 @@ const feriaController = {
       );
     } catch (error) {
       console.error("Error al obtener resumen de feria activa:", error);
+      // Si no hay feria activa, devolver respuesta 404
+      if (error.message === "No hay feria activa") {
+        return res.error("No hay feria activa", 404, {
+          code: "NO_ACTIVE_FERIA",
+          details: error.message,
+        });
+      }
       return res.error("Error al obtener el resumen de la feria activa", 500, {
         code: "FETCH_ERROR",
         details: error.message,
@@ -240,6 +256,36 @@ const feriaController = {
 
       return res.error("Error al finalizar la feria", 500, {
         code: "FINALIZE_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/ferias/:idFeria/proyectos-finales
+   * Obtener proyectos finales y calificados de una feria
+   */
+  async obtenerProyectosFinalesFeria(req, res) {
+    try {
+      const { idFeria } = req.params;
+
+      const proyectos = await feriaService.obtenerProyectosFinalesFeria(
+        idFeria
+      );
+
+      return res.success("Proyectos finales obtenidos exitosamente", {
+        count: proyectos.length,
+        proyectos,
+      });
+    } catch (error) {
+      console.error("Error al obtener proyectos finales:", error);
+
+      if (error.message === "Feria no encontrada") {
+        return res.notFound("Feria");
+      }
+
+      return res.error("Error al obtener proyectos finales", 500, {
+        code: "FETCH_ERROR",
         details: error.message,
       });
     }
