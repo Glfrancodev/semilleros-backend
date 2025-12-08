@@ -115,7 +115,15 @@ const revisionService = {
    */
   async actualizarRevision(idRevision, data) {
     try {
-      const revision = await Revision.findByPk(idRevision);
+      const revision = await Revision.findByPk(idRevision, {
+        include: [
+          {
+            model: db.Tarea,
+            as: "tarea",
+            attributes: ["idTarea", "orden"],
+          },
+        ],
+      });
 
       if (!revision) {
         throw new Error("Revisión no encontrada");
@@ -129,6 +137,26 @@ const revisionService = {
           data.revisado !== undefined ? data.revisado : revision.revisado,
         fechaActualizacion: new Date(),
       });
+
+      // Si es la tarea 0 (inscripción) y se asignó un puntaje, actualizar estaAprobado del proyecto
+      if (
+        revision.tarea &&
+        revision.tarea.orden === 0 &&
+        data.puntaje !== undefined
+      ) {
+        const proyecto = await Proyecto.findByPk(revision.idProyecto);
+        if (proyecto) {
+          // Aprobar si el puntaje es mayor a 0, rechazar si es 0
+          const estaAprobado = data.puntaje > 0;
+          await proyecto.update({
+            estaAprobado: estaAprobado,
+            fechaActualizacion: new Date(),
+          });
+          console.log(
+            `Proyecto ${proyecto.idProyecto} actualizado: estaAprobado = ${estaAprobado} (puntaje tarea 0: ${data.puntaje})`
+          );
+        }
+      }
 
       return revision;
     } catch (error) {
