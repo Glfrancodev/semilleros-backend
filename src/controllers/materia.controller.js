@@ -31,6 +31,26 @@ const obtenerMaterias = async (req, res, next) => {
   }
 };
 
+// Obtener materias por semestre
+const obtenerMateriasPorSemestre = async (req, res, next) => {
+  try {
+    const { idSemestre } = req.params;
+    const materias = await materiaService.obtenerMateriasPorSemestre(
+      idSemestre
+    );
+    return res.success("Materias del semestre obtenidas exitosamente", {
+      count: materias.length,
+      items: materias,
+    });
+  } catch (err) {
+    console.error("Error al obtener materias por semestre:", err);
+    return res.error("Error al obtener las materias del semestre", 500, {
+      code: "FETCH_ERROR",
+      details: err.message,
+    });
+  }
+};
+
 // Obtener una Materia por ID
 const obtenerMateriaPorId = async (req, res, next) => {
   try {
@@ -110,6 +130,7 @@ const obtenerGruposPorMateria = async (req, res, next) => {
 module.exports = {
   crearMateria,
   obtenerMaterias,
+  obtenerMateriasPorSemestre,
   obtenerMateriaPorId,
   actualizarMateria,
   eliminarMateria,

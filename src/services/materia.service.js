@@ -98,6 +98,50 @@ const obtenerMaterias = async () => {
   });
 };
 
+// Obtener materias por semestre
+const obtenerMateriasPorSemestre = async (idSemestre) => {
+  const db = require("../models");
+  const { Docente, Usuario } = db;
+
+  return await Materia.findAll({
+    where: { idSemestre },
+    include: [
+      {
+        model: db.AreaCategoria,
+        as: "areaCategoria",
+        attributes: ["idAreaCategoria", "idArea", "idCategoria"],
+        include: [
+          { model: db.Area, as: "area", attributes: ["nombre"] },
+          { model: db.Categoria, as: "categoria", attributes: ["nombre"] },
+        ],
+      },
+      {
+        model: db.GrupoMateria,
+        as: "grupoMaterias",
+        include: [
+          {
+            model: db.Grupo,
+            as: "grupo",
+            attributes: ["idGrupo", "sigla"],
+          },
+          {
+            model: Docente,
+            as: "docente",
+            attributes: ["idDocente", "codigoDocente"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "correo"],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+};
+
 // Obtener una Materia por ID
 const obtenerMateriaPorId = async (idMateria) => {
   return await Materia.findByPk(idMateria);
@@ -107,7 +151,7 @@ const obtenerMateriaPorId = async (idMateria) => {
 // Actualizar una Materia
 const actualizarMateria = async (idMateria, datos) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const fechaActual = new Date();
     const { grupos, ...materiaData } = datos;
@@ -129,29 +173,29 @@ const actualizarMateria = async (idMateria, datos) => {
       const gruposActuales = await GrupoMateria.findAll({
         where: { idMateria },
         include: [{ model: Grupo, as: "grupo" }],
-        transaction
+        transaction,
       });
 
       const mapGruposActuales = new Map(); // sigla -> { idGrupoMateria, idGrupo, idDocente }
-      gruposActuales.forEach(gm => {
+      gruposActuales.forEach((gm) => {
         mapGruposActuales.set(gm.grupo.sigla, {
           idGrupoMateria: gm.idGrupoMateria,
           idGrupo: gm.idGrupo,
-          idDocente: gm.idDocente
+          idDocente: gm.idDocente,
         });
       });
 
-      const siglasNuevas = new Set(grupos.map(g => g.sigla));
+      const siglasNuevas = new Set(grupos.map((g) => g.sigla));
 
       // A. Identificar grupos a ELIMINAR (están en actuales pero no en nuevos)
       for (const [sigla, info] of mapGruposActuales) {
         if (!siglasNuevas.has(sigla)) {
           await GrupoMateria.destroy({
             where: { idGrupoMateria: info.idGrupoMateria },
-            transaction
+            transaction,
           });
           // Opcional: Eliminar el Grupo si se desea limpiar, pero por seguridad solo quitamos la relación
-          // await Grupo.destroy({ where: { idGrupo: info.idGrupo }, transaction }); 
+          // await Grupo.destroy({ where: { idGrupo: info.idGrupo }, transaction });
         }
       }
 
@@ -162,13 +206,13 @@ const actualizarMateria = async (idMateria, datos) => {
           const infoActual = mapGruposActuales.get(grupoData.sigla);
           if (infoActual.idDocente !== grupoData.idDocente) {
             await GrupoMateria.update(
-              { 
+              {
                 idDocente: grupoData.idDocente,
-                fechaActualizacion: fechaActual
+                fechaActualizacion: fechaActual,
               },
-              { 
+              {
                 where: { idGrupoMateria: infoActual.idGrupoMateria },
-                transaction
+                transaction,
               }
             );
           }
@@ -244,6 +288,7 @@ const obtenerGruposPorMateria = async (idMateria) => {
 module.exports = {
   crearMateria,
   obtenerMaterias,
+  obtenerMateriasPorSemestre,
   obtenerMateriaPorId,
   actualizarMateria,
   eliminarMateria,

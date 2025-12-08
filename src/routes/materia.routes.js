@@ -8,6 +8,12 @@ router.post("/", materiaController.crearMateria);
 // Ruta para obtener todas las Materias
 router.get("/", materiaController.obtenerMaterias);
 
+// Ruta para obtener materias por semestre
+router.get(
+  "/semestre/:idSemestre",
+  materiaController.obtenerMateriasPorSemestre
+);
+
 // Ruta para obtener grupos por materia (debe ir antes de /:id)
 router.get("/:id/grupos", materiaController.obtenerGruposPorMateria);
 

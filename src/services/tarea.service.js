@@ -44,7 +44,7 @@ const tareaService = {
   },
 
   /**
-   * Obtener tareas con orden 0
+   * Obtener tareas con orden 0 de ferias activas
    */
   async obtenerTareasOrdenCero() {
     try {
@@ -55,6 +55,7 @@ const tareaService = {
             model: db.Feria,
             as: "feria",
             attributes: ["idFeria", "nombre", "semestre", "año", "estado"],
+            where: { estado: "Activo" }, // Solo ferias activas
           },
         ],
         order: [["fechaLimite", "ASC"]],
