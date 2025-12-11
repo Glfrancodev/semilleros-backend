@@ -1,4 +1,11 @@
-const { Usuario, Rol, Estudiante, Docente, Archivo } = require("../models");
+const {
+  Usuario,
+  Rol,
+  Estudiante,
+  Docente,
+  Administrativo,
+  Archivo,
+} = require("../models");
 const archivoService = require("./archivo.service");
 
 // Crear un nuevo Usuario
@@ -13,6 +20,7 @@ const obtenerUsuarios = async () => {
       { model: Rol, as: "Rol" },
       { model: Estudiante, as: "Estudiante" },
       { model: Docente, as: "Docente" },
+      { model: Administrativo, as: "Administrativo" },
       {
         model: Archivo,
         as: "fotoPerfil",
@@ -56,6 +64,7 @@ const obtenerUsuarioPorId = async (idUsuario) => {
       { model: Rol, as: "Rol" },
       { model: Estudiante, as: "Estudiante" },
       { model: Docente, as: "Docente" },
+      { model: Administrativo, as: "Administrativo" },
       {
         model: Archivo,
         as: "fotoPerfil",
