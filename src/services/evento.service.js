@@ -9,6 +9,8 @@ const crearEvento = async (datos) => {
     estaActivo: datos.estaActivo !== undefined ? datos.estaActivo : true,
     fechaCreacion: fechaActual,
     fechaActualizacion: fechaActual,
+    creadoPor: datos.creadoPor, // Guardamos creadoPor
+    actualizadoPor: datos.actualizadoPor, // Guardamos actualizadoPor
   });
 };
 
@@ -34,21 +36,81 @@ const obtenerEventos = async () => {
         ],
       ],
     },
+    include: [
+      {
+        model: Evento.sequelize.models.Administrativo,
+        as: "creador",
+        include: [
+          {
+            model: Evento.sequelize.models.Usuario,
+            as: "usuario",
+            attributes: ["nombre", "apellido", "correo"],
+          },
+        ],
+        attributes: ["idAdministrativo", "codigoAdministrativo"],
+      },
+      {
+        model: Evento.sequelize.models.Administrativo,
+        as: "actualizador",
+        include: [
+          {
+            model: Evento.sequelize.models.Usuario,
+            as: "usuario",
+            attributes: ["nombre", "apellido", "correo"],
+          },
+        ],
+        attributes: ["idAdministrativo", "codigoAdministrativo"],
+      },
+    ],
   });
 };
 
 // Obtener un Evento por ID
 const obtenerEventoPorId = async (idEvento) => {
-  return await Evento.findByPk(idEvento);
+  return await Evento.findByPk(idEvento, {
+    include: [
+      {
+        model: Evento.sequelize.models.Administrativo,
+        as: "creador",
+        include: [
+          {
+            model: Evento.sequelize.models.Usuario,
+            as: "usuario",
+            attributes: ["nombre", "apellido", "correo"],
+          },
+        ],
+        attributes: ["idAdministrativo", "codigoAdministrativo"],
+      },
+      {
+        model: Evento.sequelize.models.Administrativo,
+        as: "actualizador",
+        include: [
+          {
+            model: Evento.sequelize.models.Usuario,
+            as: "usuario",
+            attributes: ["nombre", "apellido", "correo"],
+          },
+        ],
+        attributes: ["idAdministrativo", "codigoAdministrativo"],
+      },
+    ],
+  });
 };
 
 // Actualizar un Evento
 const actualizarEvento = async (idEvento, datos) => {
   const fechaActual = new Date();
-  return await Evento.update(
-    { ...datos, fechaActualizacion: fechaActual },
-    { where: { idEvento } }
-  );
+  const datosActualizados = {
+    ...datos,
+    fechaActualizacion: fechaActual,
+  };
+
+  // Solo agregar actualizadoPor si está presente
+  if (datos.actualizadoPor) {
+    datosActualizados.actualizadoPor = datos.actualizadoPor;
+  }
+
+  return await Evento.update(datosActualizados, { where: { idEvento } });
 };
 
 // Eliminar un Evento

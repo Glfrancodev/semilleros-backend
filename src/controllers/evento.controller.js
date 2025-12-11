@@ -3,7 +3,18 @@ const eventoService = require("../services/evento.service");
 // Crear un nuevo Evento
 const crearEvento = async (req, res, next) => {
   try {
-    const nuevoEvento = await eventoService.crearEvento(req.body);
+    // 1. Obtener idAdministrativo del usuario autenticado (igual que Categoria)
+    const { Usuario, Administrativo } = require("../models");
+    const usuario = await Usuario.findByPk(req.user.idUsuario, {
+      include: [{ model: Administrativo, as: "Administrativo" }],
+    });
+    const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
+    const nuevoEvento = await eventoService.crearEvento({
+      ...req.body,
+      creadoPor: idAdministrativo,
+      actualizadoPor: idAdministrativo,
+    });
     return res.success("Evento creado exitosamente", nuevoEvento, 201);
   } catch (err) {
     console.error("Error al crear evento:", err);
@@ -49,9 +60,19 @@ const obtenerEventoPorId = async (req, res, next) => {
 // Actualizar un Evento
 const actualizarEvento = async (req, res, next) => {
   try {
+    // 1. Obtener idAdministrativo del usuario autenticado (igual que Categoria)
+    const { Usuario, Administrativo } = require("../models");
+    const usuario = await Usuario.findByPk(req.user.idUsuario, {
+      include: [{ model: Administrativo, as: "Administrativo" }],
+    });
+    const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
     const [actualizados] = await eventoService.actualizarEvento(
       req.params.id,
-      req.body
+      {
+        ...req.body,
+        actualizadoPor: idAdministrativo,
+      }
     );
     if (actualizados === 0) return res.notFound("Evento");
 

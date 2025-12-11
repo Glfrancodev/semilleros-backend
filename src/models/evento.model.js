@@ -40,6 +40,22 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
       },
+      creadoPor: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: "Administrativo",
+          key: "idAdministrativo",
+        },
+      },
+      actualizadoPor: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: "Administrativo",
+          key: "idAdministrativo",
+        },
+      },
     },
     {
       tableName: "Evento", // Nombre de la tabla
@@ -55,6 +71,17 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: { name: "idEvento", allowNull: false },
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
+    });
+
+    // Auditoría
+    Evento.belongsTo(models.Administrativo, {
+      as: "creador",
+      foreignKey: "creadoPor",
+    });
+
+    Evento.belongsTo(models.Administrativo, {
+      as: "actualizador",
+      foreignKey: "actualizadoPor",
     });
   };
 

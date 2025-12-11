@@ -89,6 +89,16 @@ module.exports = (sequelize, DataTypes) => {
       as: "areaCategoriasActualizadas",
       foreignKey: "actualizadoPor",
     });
+
+    // --- EVENTO ---
+    Administrativo.hasMany(models.Evento, {
+      as: "eventosCreados",
+      foreignKey: "creadoPor",
+    });
+    Administrativo.hasMany(models.Evento, {
+      as: "eventosActualizados",
+      foreignKey: "actualizadoPor",
+    });
   };
 
   return Administrativo;
