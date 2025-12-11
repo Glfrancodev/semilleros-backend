@@ -13,6 +13,7 @@ const EstudianteEvento = require("./estudianteEvento.model")(
   DataTypes
 );
 const Docente = require("./docente.model")(sequelize, DataTypes);
+const Administrativo = require("./administrativo.model")(sequelize, DataTypes);
 const Grupo = require("./grupo.model")(sequelize, DataTypes);
 const GrupoMateria = require("./grupoMateria.model")(sequelize, DataTypes);
 const Semestre = require("./semestre.model")(sequelize, DataTypes);
@@ -54,6 +55,7 @@ const db = {
   Evento,
   EstudianteEvento,
   Docente,
+  Administrativo,
   Grupo,
   GrupoMateria,
   Semestre,

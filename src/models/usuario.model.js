@@ -126,6 +126,14 @@ module.exports = (sequelize, DataTypes) => {
       onDelete: "CASCADE",
     });
 
+    // Relación inversa: Un Usuario puede ser un Administrativo
+    Usuario.hasOne(models.Administrativo, {
+      as: "Administrativo",
+      foreignKey: { name: "idUsuario", allowNull: false },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+    });
+
     // Relación 1:1 con Archivo (foto de perfil) - Usuario tiene la FK
     Usuario.belongsTo(models.Archivo, {
       as: "fotoPerfil",
