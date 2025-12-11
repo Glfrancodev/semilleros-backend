@@ -1,5 +1,6 @@
 const express = require("express");
 const feriaController = require("../controllers/feria.controller");
+const { validarToken } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -13,16 +14,20 @@ router.get("/activa", feriaController.obtenerFeriaActiva);
 router.get("/pasadas", feriaController.obtenerFeriasPasadas);
 
 // POST /api/ferias - Crear feria
-router.post("/", feriaController.crearFeria);
+router.post("/", validarToken, feriaController.crearFeria);
 
 // GET /api/ferias - Obtener todas las ferias
 router.get("/", feriaController.obtenerFerias);
 
 // PUT /api/ferias/:idFeria - Actualizar feria
-router.put("/:idFeria", feriaController.actualizarFeria);
+router.put("/:idFeria", validarToken, feriaController.actualizarFeria);
 
 // POST /api/ferias/:idFeria/finalizar - Finalizar feria y calcular ganadores
-router.post("/:idFeria/finalizar", feriaController.finalizarFeria);
+router.post(
+  "/:idFeria/finalizar",
+  validarToken,
+  feriaController.finalizarFeria
+);
 
 // GET /api/ferias/:idFeria/proyectos-finales - Obtener proyectos finales de la feria
 router.get(
@@ -31,7 +36,7 @@ router.get(
 );
 
 // DELETE /api/ferias/:idFeria - Eliminar feria
-router.delete("/:idFeria", feriaController.eliminarFeria);
+router.delete("/:idFeria", validarToken, feriaController.eliminarFeria);
 
 // GET /api/ferias/:idFeria - Obtener feria por ID
 router.get("/:idFeria", feriaController.obtenerFeriaPorId);

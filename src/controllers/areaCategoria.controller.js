@@ -1,4 +1,5 @@
 const areaCategoriaService = require("../services/areaCategoria.service");
+const { Usuario, Administrativo } = require("../models");
 
 const areaCategoriaController = {
   /**
@@ -15,9 +16,17 @@ const areaCategoriaController = {
         );
       }
 
-      const areaCategoria = await areaCategoriaService.crearAreaCategoria(
-        req.body
-      );
+      // Obtener idAdministrativo del usuario autenticado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
+      const areaCategoria = await areaCategoriaService.crearAreaCategoria({
+        ...req.body,
+        creadoPor: idAdministrativo,
+        actualizadoPor: idAdministrativo,
+      });
       return res.success(
         "AreaCategoría creada exitosamente",
         areaCategoria,
@@ -129,9 +138,19 @@ const areaCategoriaController = {
   async actualizarAreaCategoria(req, res) {
     try {
       const { idAreaCategoria } = req.params;
+
+      // Obtener idAdministrativo del usuario autenticado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
       const areaCategoria = await areaCategoriaService.actualizarAreaCategoria(
         idAreaCategoria,
-        req.body
+        {
+          ...req.body,
+          actualizadoPor: idAdministrativo,
+        }
       );
       return res.success(
         "AreaCategoría actualizada exitosamente",

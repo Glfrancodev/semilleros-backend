@@ -1,4 +1,5 @@
 const areaService = require("../services/area.service");
+const { Usuario, Administrativo } = require("../models");
 
 const areaController = {
   /**
@@ -13,7 +14,17 @@ const areaController = {
         return res.validationError("El campo nombre es requerido");
       }
 
-      const area = await areaService.crearArea(req.body);
+      // Obtener idAdministrativo del usuario autenticado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
+      const area = await areaService.crearArea({
+        ...req.body,
+        creadoPor: idAdministrativo,
+        actualizadoPor: idAdministrativo,
+      });
       return res.success("Área creada exitosamente", area, 201);
     } catch (error) {
       console.error("Error al crear área:", error);
@@ -74,7 +85,17 @@ const areaController = {
   async actualizarArea(req, res) {
     try {
       const { idArea } = req.params;
-      const area = await areaService.actualizarArea(idArea, req.body);
+
+      // Obtener idAdministrativo del usuario autenticado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
+      const area = await areaService.actualizarArea(idArea, {
+        ...req.body,
+        actualizadoPor: idAdministrativo,
+      });
       return res.success("Área actualizada exitosamente", area);
     } catch (error) {
       console.error("Error al actualizar área:", error);

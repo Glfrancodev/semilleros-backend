@@ -2,8 +2,10 @@ const express = require("express");
 const router = express.Router();
 const areaCategoriaController = require("../controllers/areaCategoria.controller");
 
+const { validarToken } = require("../middleware/authMiddleware");
+
 // Rutas CRUD para AreaCategoria
-router.post("/", areaCategoriaController.crearAreaCategoria);
+router.post("/", validarToken, areaCategoriaController.crearAreaCategoria);
 router.get("/", areaCategoriaController.obtenerAreaCategorias);
 
 // Ruta para buscar AreaCategoria por área y categoría (debe ir antes de /:idAreaCategoria)
@@ -26,10 +28,12 @@ router.get(
 );
 router.put(
   "/:idAreaCategoria",
+  validarToken,
   areaCategoriaController.actualizarAreaCategoria
 );
 router.delete(
   "/:idAreaCategoria",
+  validarToken,
   areaCategoriaController.eliminarAreaCategoria
 );
 

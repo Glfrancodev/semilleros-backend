@@ -1,4 +1,5 @@
 const categoriaService = require("../services/categoria.service");
+const { Usuario, Administrativo } = require("../models");
 
 const categoriaController = {
   /**
@@ -13,7 +14,17 @@ const categoriaController = {
         return res.validationError("El campo nombre es requerido");
       }
 
-      const categoria = await categoriaService.crearCategoria(req.body);
+      // Obtener idAdministrativo del usuario autenticado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
+      const categoria = await categoriaService.crearCategoria({
+        ...req.body,
+        creadoPor: idAdministrativo,
+        actualizadoPor: idAdministrativo,
+      });
       return res.success("Categoría creada exitosamente", categoria, 201);
     } catch (error) {
       console.error("Error al crear categoría:", error);
@@ -76,9 +87,19 @@ const categoriaController = {
   async actualizarCategoria(req, res) {
     try {
       const { idCategoria } = req.params;
+
+      // Obtener idAdministrativo del usuario autenticado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
       const categoria = await categoriaService.actualizarCategoria(
         idCategoria,
-        req.body
+        {
+          ...req.body,
+          actualizadoPor: idAdministrativo,
+        }
       );
       return res.success("Categoría actualizada exitosamente", categoria);
     } catch (error) {

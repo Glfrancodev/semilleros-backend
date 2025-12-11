@@ -20,6 +20,15 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
       },
+      // Foreign Keys para auditoría
+      creadoPor: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
+      actualizadoPor: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
     },
     {
       tableName: "Categoria",
@@ -35,6 +44,22 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: { name: "idCategoria", allowNull: false },
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
+    });
+
+    // FK -> Administrativo (creador)
+    Categoria.belongsTo(models.Administrativo, {
+      as: "creador",
+      foreignKey: { name: "creadoPor", allowNull: true },
+      onUpdate: "CASCADE",
+      onDelete: "SET NULL",
+    });
+
+    // FK -> Administrativo (actualizador)
+    Categoria.belongsTo(models.Administrativo, {
+      as: "actualizador",
+      foreignKey: { name: "actualizadoPor", allowNull: true },
+      onUpdate: "CASCADE",
+      onDelete: "SET NULL",
     });
   };
 

@@ -1,21 +1,62 @@
 const db = require("../models");
 const Categoria = db.Categoria;
 const Proyecto = db.Proyecto;
+const Administrativo = db.Administrativo;
+const Usuario = db.Usuario;
 
 const categoriaService = {
   /**
    * Crear una nueva categoría
    */
   async crearCategoria(data) {
+    const transaction = await db.sequelize.transaction();
     try {
-      const categoria = await Categoria.create({
-        nombre: data.nombre,
-        fechaCreacion: new Date(),
-        fechaActualizacion: new Date(),
-      });
+      const categoria = await Categoria.create(
+        {
+          nombre: data.nombre,
+          creadoPor: data.creadoPor,
+          actualizadoPor: data.actualizadoPor,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date(),
+        },
+        { transaction }
+      );
 
-      return categoria;
+      await transaction.commit();
+
+      const categoriaCompleta = await Categoria.findByPk(
+        categoria.idCategoria,
+        {
+          include: [
+            {
+              model: Administrativo,
+              as: "creador",
+              include: [
+                {
+                  model: Usuario,
+                  as: "usuario",
+                  attributes: ["nombre", "apellido", "correo"],
+                },
+              ],
+            },
+            {
+              model: Administrativo,
+              as: "actualizador",
+              include: [
+                {
+                  model: Usuario,
+                  as: "usuario",
+                  attributes: ["nombre", "apellido", "correo"],
+                },
+              ],
+            },
+          ],
+        }
+      );
+
+      return categoriaCompleta;
     } catch (error) {
+      await transaction.rollback();
       console.error("Error en crearCategoria:", error);
       throw error;
     }
@@ -37,6 +78,28 @@ const categoriaService = {
                 model: db.Materia,
                 as: "materias",
                 attributes: ["idMateria", "sigla", "nombre"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "creador",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "actualizador",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
               },
             ],
           },
@@ -62,6 +125,28 @@ const categoriaService = {
             as: "proyectos",
             attributes: ["idProyecto", "nombre"],
           },
+          {
+            model: Administrativo,
+            as: "creador",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "actualizador",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
         ],
       });
 
@@ -80,6 +165,7 @@ const categoriaService = {
    * Actualizar una categoría
    */
   async actualizarCategoria(idCategoria, data) {
+    const transaction = await db.sequelize.transaction();
     try {
       const categoria = await Categoria.findByPk(idCategoria);
 
@@ -87,13 +173,47 @@ const categoriaService = {
         throw new Error("Categoría no encontrada");
       }
 
-      await categoria.update({
-        nombre: data.nombre || categoria.nombre,
-        fechaActualizacion: new Date(),
+      await categoria.update(
+        {
+          nombre: data.nombre || categoria.nombre,
+          actualizadoPor: data.actualizadoPor || categoria.actualizadoPor,
+          fechaActualizacion: new Date(),
+        },
+        { transaction }
+      );
+
+      await transaction.commit();
+
+      const categoriaActualizada = await Categoria.findByPk(idCategoria, {
+        include: [
+          {
+            model: Administrativo,
+            as: "creador",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "actualizador",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+        ],
       });
 
-      return categoria;
+      return categoriaActualizada;
     } catch (error) {
+      await transaction.rollback();
       console.error("Error en actualizarCategoria:", error);
       throw error;
     }

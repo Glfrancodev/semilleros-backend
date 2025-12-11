@@ -97,6 +97,8 @@ const feriaService = {
           año: data.año,
           estado: data.estado || "Activo",
           idTipoCalificacion: idTipoCalificacionCreado,
+          creadoPor: data.creadoPor || null,
+          actualizadoPor: data.creadoPor || null, // Al crear, el que crea es el que actualiza
           fechaCreacion: new Date(),
           fechaActualizacion: new Date(),
         },
@@ -154,6 +156,30 @@ const feriaService = {
               },
             ],
           },
+          {
+            model: db.Administrativo,
+            as: "creador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: db.Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: db.Administrativo,
+            as: "actualizador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: db.Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
         ],
         order: [[{ model: db.Tarea, as: "tareas" }, "orden", "ASC"]],
       });
@@ -194,6 +220,30 @@ const feriaService = {
                 model: db.SubCalificacion,
                 as: "subCalificaciones",
                 attributes: ["idSubCalificacion", "nombre", "maximoPuntaje"],
+              },
+            ],
+          },
+          {
+            model: db.Administrativo,
+            as: "creador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: db.Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: db.Administrativo,
+            as: "actualizador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: db.Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
               },
             ],
           },
@@ -337,6 +387,7 @@ const feriaService = {
           año: data.año || feria.año,
           estado: data.estado !== undefined ? data.estado : feria.estado,
           idTipoCalificacion: nuevoIdTipoCalificacion,
+          actualizadoPor: data.actualizadoPor || feria.actualizadoPor, // Solo actualizar actualizadoPor
           fechaActualizacion: new Date(),
         },
         { transaction }
@@ -754,9 +805,10 @@ const feriaService = {
   /**
    * Finalizar una feria y calcular ganadores automáticamente
    * @param {string} idFeria - ID de la feria
+   * @param {string} idAdministrativo - ID del administrativo que finaliza la feria
    * @returns {Promise<Object>} - Feria actualizada con ganadores
    */
-  async finalizarFeria(idFeria) {
+  async finalizarFeria(idFeria, idAdministrativo) {
     const transaction = await db.sequelize.transaction();
     try {
       // 1. Verificar que la feria existe
@@ -981,6 +1033,7 @@ const feriaService = {
       // 6. Actualizar la feria
       feria.estado = "Finalizado";
       feria.ganadores = ganadores;
+      feria.actualizadoPor = idAdministrativo;
       feria.fechaActualizacion = new Date();
       await feria.save({ transaction });
 

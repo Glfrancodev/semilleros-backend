@@ -3,22 +3,32 @@ const AreaCategoria = db.AreaCategoria;
 const Area = db.Area;
 const Categoria = db.Categoria;
 const Materia = db.Materia;
+const Administrativo = db.Administrativo;
+const Usuario = db.Usuario;
 
 const areaCategoriaService = {
   /**
    * Crear una nueva área-categoría
    */
   async crearAreaCategoria(data) {
+    const transaction = await db.sequelize.transaction();
     try {
-      const areaCategoria = await AreaCategoria.create({
-        idArea: data.idArea,
-        idCategoria: data.idCategoria,
-        fechaCreacion: new Date(),
-        fechaActualizacion: new Date(),
-      });
+      const areaCategoria = await AreaCategoria.create(
+        {
+          idArea: data.idArea,
+          idCategoria: data.idCategoria,
+          creadoPor: data.creadoPor,
+          actualizadoPor: data.actualizadoPor,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date(),
+        },
+        { transaction }
+      );
 
+      await transaction.commit();
       return areaCategoria;
     } catch (error) {
+      await transaction.rollback();
       console.error("Error en crearAreaCategoria:", error);
       throw error;
     }
@@ -151,6 +161,7 @@ const areaCategoriaService = {
    * Actualizar un área-categoría
    */
   async actualizarAreaCategoria(idAreaCategoria, data) {
+    const transaction = await db.sequelize.transaction();
     try {
       const areaCategoria = await AreaCategoria.findByPk(idAreaCategoria);
 
@@ -158,14 +169,20 @@ const areaCategoriaService = {
         throw new Error("AreaCategoría no encontrada");
       }
 
-      await areaCategoria.update({
-        idArea: data.idArea || areaCategoria.idArea,
-        idCategoria: data.idCategoria || areaCategoria.idCategoria,
-        fechaActualizacion: new Date(),
-      });
+      await areaCategoria.update(
+        {
+          idArea: data.idArea || areaCategoria.idArea,
+          idCategoria: data.idCategoria || areaCategoria.idCategoria,
+          actualizadoPor: data.actualizadoPor || areaCategoria.actualizadoPor,
+          fechaActualizacion: new Date(),
+        },
+        { transaction }
+      );
 
+      await transaction.commit();
       return areaCategoria;
     } catch (error) {
+      await transaction.rollback();
       console.error("Error en actualizarAreaCategoria:", error);
       throw error;
     }

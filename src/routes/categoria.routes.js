@@ -3,8 +3,10 @@ const categoriaController = require('../controllers/categoria.controller');
 
 const router = express.Router();
 
+const { validarToken } = require("../middleware/authMiddleware");
+
 // POST /api/categorias - Crear categoría
-router.post('/', categoriaController.crearCategoria);
+router.post('/', validarToken, categoriaController.crearCategoria);
 
 // GET /api/categorias - Obtener todas las categorías
 router.get('/', categoriaController.obtenerCategorias);
@@ -13,9 +15,9 @@ router.get('/', categoriaController.obtenerCategorias);
 router.get('/:idCategoria', categoriaController.obtenerCategoriaPorId);
 
 // PUT /api/categorias/:idCategoria - Actualizar categoría
-router.put('/:idCategoria', categoriaController.actualizarCategoria);
+router.put('/:idCategoria', validarToken, categoriaController.actualizarCategoria);
 
 // DELETE /api/categorias/:idCategoria - Eliminar categoría
-router.delete('/:idCategoria', categoriaController.eliminarCategoria);
+router.delete('/:idCategoria', validarToken, categoriaController.eliminarCategoria);
 
 module.exports = router;

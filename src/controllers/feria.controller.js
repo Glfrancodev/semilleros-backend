@@ -1,4 +1,6 @@
 const feriaService = require("../services/feria.service");
+const db = require("../models");
+const { Usuario, Administrativo } = db;
 
 const feriaController = {
   /**
@@ -38,8 +40,22 @@ const feriaController = {
         );
       }
 
+      console.log("📝 Validando usuario para audit:", req.user);
+      // Obtener idAdministrativo del usuario autenticado para audit trail
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+
+      console.log("📝 Usuario encontrado:", usuario ? usuario.toJSON() : "null");
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+      console.log("📝 idAdministrativo resuelto:", idAdministrativo);
+
       console.log("✅ Validaciones pasadas, creando feria...");
-      const feria = await feriaService.crearFeria(req.body);
+      const feria = await feriaService.crearFeria({
+        ...req.body,
+        creadoPor: idAdministrativo,
+        actualizadoPor: idAdministrativo,
+      });
 
       return res.success("Feria creada exitosamente", feria, 201);
     } catch (error) {
@@ -114,7 +130,17 @@ const feriaController = {
     try {
       const { idFeria } = req.params;
 
-      const feria = await feriaService.actualizarFeria(idFeria, req.body);
+      // Obtener idAdministrativo del usuario autenticado para audit trail
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
+      const feria = await feriaService.actualizarFeria(idFeria, {
+        ...req.body,
+        actualizadoPor: idAdministrativo,
+      });
 
       return res.success("Feria actualizada exitosamente", feria);
     } catch (error) {
@@ -234,7 +260,16 @@ const feriaController = {
     try {
       const { idFeria } = req.params;
 
-      const resultado = await feriaService.finalizarFeria(idFeria);
+      // Obtener idAdministrativo del usuario autenticado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
+      const resultado = await feriaService.finalizarFeria(
+        idFeria,
+        idAdministrativo
+      );
 
       return res.success(
         "Feria finalizada exitosamente. Ganadores calculados.",

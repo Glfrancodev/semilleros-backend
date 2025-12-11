@@ -1,21 +1,59 @@
 const db = require("../models");
 const Area = db.Area;
 const AreaCategoria = db.AreaCategoria;
+const Administrativo = db.Administrativo;
+const Usuario = db.Usuario;
 
 const areaService = {
   /**
    * Crear una nueva área
    */
   async crearArea(data) {
+    const transaction = await db.sequelize.transaction();
     try {
-      const area = await Area.create({
-        nombre: data.nombre,
-        fechaCreacion: new Date(),
-        fechaActualizacion: new Date(),
+      const area = await Area.create(
+        {
+          nombre: data.nombre,
+          creadoPor: data.creadoPor,
+          actualizadoPor: data.actualizadoPor,
+          fechaCreacion: new Date(),
+          fechaActualizacion: new Date(),
+        },
+        { transaction }
+      );
+
+      await transaction.commit();
+
+      const areaCompleta = await Area.findByPk(area.idArea, {
+        include: [
+          {
+            model: Administrativo,
+            as: "creador",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "actualizador",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+        ],
       });
 
-      return area;
+      return areaCompleta;
     } catch (error) {
+      await transaction.rollback();
       console.error("Error en crearArea:", error);
       throw error;
     }
@@ -41,6 +79,28 @@ const areaService = {
                 model: db.Materia,
                 as: "materias",
                 attributes: ["idMateria", "nombre"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "creador",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "actualizador",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
               },
             ],
           },
@@ -78,6 +138,28 @@ const areaService = {
               },
             ],
           },
+          {
+            model: Administrativo,
+            as: "creador",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "actualizador",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
         ],
       });
 
@@ -96,6 +178,7 @@ const areaService = {
    * Actualizar un área
    */
   async actualizarArea(idArea, data) {
+    const transaction = await db.sequelize.transaction();
     try {
       const area = await Area.findByPk(idArea);
 
@@ -103,13 +186,47 @@ const areaService = {
         throw new Error("Área no encontrada");
       }
 
-      await area.update({
-        nombre: data.nombre || area.nombre,
-        fechaActualizacion: new Date(),
+      await area.update(
+        {
+          nombre: data.nombre || area.nombre,
+          actualizadoPor: data.actualizadoPor || area.actualizadoPor,
+          fechaActualizacion: new Date(),
+        },
+        { transaction }
+      );
+
+      await transaction.commit();
+
+      const areaActualizada = await Area.findByPk(idArea, {
+        include: [
+          {
+            model: Administrativo,
+            as: "creador",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "actualizador",
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+        ],
       });
 
-      return area;
+      return areaActualizada;
     } catch (error) {
+      await transaction.rollback();
       console.error("Error en actualizarArea:", error);
       throw error;
     }
