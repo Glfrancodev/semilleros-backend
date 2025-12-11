@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
       },
       sigla: {
-        type: DataTypes.STRING(10),
+        type: DataTypes.STRING(50),
         allowNull: false,
         validate: { notEmpty: true },
       },
@@ -40,6 +40,22 @@ module.exports = (sequelize, DataTypes) => {
       fechaActualizacion: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
+      },
+      creadoPor: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: "Administrativo",
+          key: "idAdministrativo",
+        },
+      },
+      actualizadoPor: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: "Administrativo",
+          key: "idAdministrativo",
+        },
       },
     },
     {
@@ -73,6 +89,17 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: { name: "idMateria", allowNull: false },
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
+    });
+
+    // Auditoría
+    Materia.belongsTo(models.Administrativo, {
+      as: "creador",
+      foreignKey: "creadoPor",
+    });
+
+    Materia.belongsTo(models.Administrativo, {
+      as: "actualizador",
+      foreignKey: "actualizadoPor",
     });
   };
 

@@ -1,4 +1,4 @@
-const { Materia, Grupo, GrupoMateria, sequelize } = require("../models");
+const { Materia, Grupo, GrupoMateria, sequelize, Administrativo, Usuario } = require("../models");
 
 // Crear una nueva Materia con sus grupos
 const crearMateria = async (datos) => {
@@ -12,6 +12,8 @@ const crearMateria = async (datos) => {
     const materia = await Materia.create(
       {
         ...materiaData,
+        creadoPor: materiaData.creadoPor,
+        actualizadoPor: materiaData.actualizadoPor,
         fechaCreacion: fechaActual,
         fechaActualizacion: fechaActual,
       },
@@ -58,7 +60,8 @@ const crearMateria = async (datos) => {
 // Obtener todas las Materias
 const obtenerMaterias = async () => {
   const db = require("../models");
-  const { Docente, Usuario } = db;
+
+  const { Docente, Usuario, Administrativo } = db;
 
   return await Materia.findAll({
     include: [
@@ -91,6 +94,28 @@ const obtenerMaterias = async () => {
                 attributes: ["nombre", "correo"],
               },
             ],
+          },
+        ],
+      },
+      {
+        model: Administrativo,
+        as: "creador",
+        include: [
+          {
+            model: Usuario,
+            as: "usuario",
+            attributes: ["nombre", "apellido", "correo"],
+          },
+        ],
+      },
+      {
+        model: Administrativo,
+        as: "actualizador",
+        include: [
+          {
+            model: Usuario,
+            as: "usuario",
+            attributes: ["nombre", "apellido", "correo"],
           },
         ],
       },
@@ -138,13 +163,60 @@ const obtenerMateriasPorSemestre = async (idSemestre) => {
           },
         ],
       },
+      {
+        model: Administrativo,
+        as: "creador",
+        include: [
+          {
+            model: Usuario,
+            as: "usuario",
+            attributes: ["nombre", "apellido", "correo"],
+          },
+        ],
+      },
+      {
+        model: Administrativo,
+        as: "actualizador",
+        include: [
+          {
+            model: Usuario,
+            as: "usuario",
+            attributes: ["nombre", "apellido", "correo"],
+          },
+        ],
+      },
     ],
   });
 };
 
 // Obtener una Materia por ID
 const obtenerMateriaPorId = async (idMateria) => {
-  return await Materia.findByPk(idMateria);
+  return await Materia.findByPk(idMateria, {
+    include: [
+      {
+        model: Administrativo,
+        as: "creador",
+        include: [
+          {
+            model: Usuario,
+            as: "usuario",
+            attributes: ["nombre", "apellido", "correo"],
+          },
+        ],
+      },
+      {
+        model: Administrativo,
+        as: "actualizador",
+        include: [
+          {
+            model: Usuario,
+            as: "usuario",
+            attributes: ["nombre", "apellido", "correo"],
+          },
+        ],
+      },
+    ],
+  });
 };
 
 // Actualizar una Materia
@@ -158,7 +230,11 @@ const actualizarMateria = async (idMateria, datos) => {
 
     // 1. Actualizar datos básicos de la materia
     const [updated] = await Materia.update(
-      { ...materiaData, fechaActualizacion: fechaActual },
+      {
+        ...materiaData,
+        actualizadoPor: datos.actualizadoPor,
+        fechaActualizacion: fechaActual,
+      },
       { where: { idMateria }, transaction }
     );
 

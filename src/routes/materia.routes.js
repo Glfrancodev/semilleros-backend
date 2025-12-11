@@ -1,9 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const materiaController = require("../controllers/materia.controller");
+const { validarToken } = require("../middleware/authMiddleware");
 
 // Ruta para crear una nueva Materia
-router.post("/", materiaController.crearMateria);
+router.post("/", validarToken, materiaController.crearMateria);
 
 // Ruta para obtener todas las Materias
 router.get("/", materiaController.obtenerMaterias);
@@ -21,9 +22,9 @@ router.get("/:id/grupos", materiaController.obtenerGruposPorMateria);
 router.get("/:id", materiaController.obtenerMateriaPorId);
 
 // Ruta para actualizar una Materia
-router.put("/:id", materiaController.actualizarMateria);
+router.put("/:id", validarToken, materiaController.actualizarMateria);
 
 // Ruta para eliminar una Materia (Hard delete)
-router.delete("/:id", materiaController.eliminarMateria);
+router.delete("/:id", validarToken, materiaController.eliminarMateria);
 
 module.exports = router;

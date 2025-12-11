@@ -3,7 +3,20 @@ const materiaService = require("../services/materia.service");
 // Crear una nueva Materia
 const crearMateria = async (req, res, next) => {
   try {
-    const nuevaMateria = await materiaService.crearMateria(req.body);
+    // 1. Obtener idAdministrativo del usuario autenticado (igual que Categoria)
+    const { Usuario, Administrativo } = require("../models");
+    const usuario = await Usuario.findByPk(req.user.idUsuario, {
+      include: [{ model: Administrativo, as: "Administrativo" }],
+    });
+    const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
+    console.log("DEBUG - Creating Materia - Found idAdministrativo:", idAdministrativo);
+
+    const nuevaMateria = await materiaService.crearMateria({
+      ...req.body,
+      creadoPor: idAdministrativo,
+      actualizadoPor: idAdministrativo,
+    });
     return res.success("Materia creada exitosamente", nuevaMateria, 201);
   } catch (err) {
     console.error("Error al crear materia:", err);
@@ -69,10 +82,19 @@ const obtenerMateriaPorId = async (req, res, next) => {
 // Actualizar una Materia
 const actualizarMateria = async (req, res, next) => {
   try {
-    const [actualizados] = await materiaService.actualizarMateria(
-      req.params.id,
-      req.body
-    );
+    // 1. Obtener idAdministrativo del usuario autenticado (igual que Categoria)
+    const { Usuario, Administrativo } = require("../models");
+    const usuario = await Usuario.findByPk(req.user.idUsuario, {
+      include: [{ model: Administrativo, as: "Administrativo" }],
+    });
+    const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
+    console.log("DEBUG - Updating Materia - Found idAdministrativo:", idAdministrativo);
+
+    const [actualizados] = await materiaService.actualizarMateria(req.params.id, {
+      ...req.body,
+      actualizadoPor: idAdministrativo,
+    });
     if (actualizados === 0) return res.notFound("Materia");
 
     const materiaActualizada = await materiaService.obtenerMateriaPorId(
