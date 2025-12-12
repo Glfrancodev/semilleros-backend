@@ -1,6 +1,8 @@
 const db = require("../models");
 const TipoCalificacion = db.TipoCalificacion;
 const SubCalificacion = db.SubCalificacion;
+const Administrativo = db.Administrativo;
+const Usuario = db.Usuario;
 
 const tipoCalificacionService = {
   /**
@@ -12,6 +14,8 @@ const tipoCalificacionService = {
         nombre: data.nombre,
         fechaCreacion: new Date(),
         fechaActualizacion: new Date(),
+        creadoPor: data.creadoPor,
+        actualizadoPor: data.actualizadoPor, // Al crear, el creador también es el actualizador
       });
 
       return tipoCalificacion;
@@ -31,6 +35,30 @@ const tipoCalificacionService = {
           {
             model: SubCalificacion,
             as: "subCalificaciones",
+          },
+          {
+            model: Administrativo,
+            as: "creador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "actualizador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
           },
         ],
         order: [["nombre", "ASC"]],
@@ -53,6 +81,30 @@ const tipoCalificacionService = {
           {
             model: SubCalificacion,
             as: "subCalificaciones",
+          },
+          {
+            model: Administrativo,
+            as: "creador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "actualizador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
           },
         ],
       });
@@ -92,6 +144,7 @@ const tipoCalificacionService = {
       await tipo.update({
         nombre: data.nombre || tipo.nombre,
         fechaActualizacion: new Date(),
+        actualizadoPor: data.actualizadoPor,
       });
 
       return tipo;

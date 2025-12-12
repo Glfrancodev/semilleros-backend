@@ -1,4 +1,5 @@
 const subCalificacionService = require("../services/subCalificacion.service");
+const { Usuario, Administrativo } = require("../models");
 
 const subCalificacionController = {
   /**
@@ -40,8 +41,18 @@ const subCalificacionController = {
         );
       }
 
+      // 1. Obtener el usuario autenticado con su Administrativo asociado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
       const subCalificacion = await subCalificacionService.crearSubCalificacion(
-        req.body
+        {
+          ...req.body,
+          creadoPor: idAdministrativo,
+          actualizadoPor: idAdministrativo,
+        }
       );
       return res.success(
         "Subcalificación creada exitosamente",
@@ -183,10 +194,19 @@ const subCalificacionController = {
         }
       }
 
+      // 1. Obtener el usuario autenticado con su Administrativo asociado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
       const subCalificacion =
         await subCalificacionService.actualizarSubCalificacion(
           idSubCalificacion,
-          req.body
+          {
+            ...req.body,
+            actualizadoPor: idAdministrativo,
+          }
         );
 
       return res.success(

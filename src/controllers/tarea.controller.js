@@ -1,4 +1,5 @@
 const tareaService = require("../services/tarea.service");
+const { Usuario, Administrativo } = require("../models");
 
 const tareaController = {
   /**
@@ -15,7 +16,17 @@ const tareaController = {
         );
       }
 
-      const tarea = await tareaService.crearTarea(req.body);
+      // 1. Obtener el usuario autenticado con su Administrativo asociado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
+      const tarea = await tareaService.crearTarea({
+        ...req.body,
+        creadoPor: idAdministrativo,
+        actualizadoPor: idAdministrativo,
+      });
       return res.success({ tarea }, "Tarea creada exitosamente");
     } catch (error) {
       console.error("Error al crear tarea:", error);
@@ -158,7 +169,16 @@ const tareaController = {
   async actualizarTarea(req, res) {
     try {
       const { idTarea } = req.params;
-      const tarea = await tareaService.actualizarTarea(idTarea, req.body);
+      // 1. Obtener el usuario autenticado con su Administrativo asociado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
+      const tarea = await tareaService.actualizarTarea(idTarea, {
+        ...req.body,
+        actualizadoPor: idAdministrativo,
+      });
       return res.success({ tarea }, "Tarea actualizada exitosamente");
     } catch (error) {
       console.error("Error al actualizar tarea:", error);

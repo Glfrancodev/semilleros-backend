@@ -2,6 +2,8 @@ const db = require("../models");
 const SubCalificacion = db.SubCalificacion;
 const TipoCalificacion = db.TipoCalificacion;
 const Calificacion = db.Calificacion;
+const Administrativo = db.Administrativo;
+const Usuario = db.Usuario;
 
 const subCalificacionService = {
   /**
@@ -15,6 +17,8 @@ const subCalificacionService = {
         idTipoCalificacion: data.idTipoCalificacion,
         fechaCreacion: new Date(),
         fechaActualizacion: new Date(),
+        creadoPor: data.creadoPor,
+        actualizadoPor: data.actualizadoPor,
       });
 
       return subCalificacion;
@@ -37,6 +41,30 @@ const subCalificacionService = {
           {
             model: Calificacion,
             as: "calificaciones",
+          },
+          {
+            model: Administrativo,
+            as: "creador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "actualizador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
           },
         ],
         order: [["nombre", "ASC"]],
@@ -66,6 +94,30 @@ const subCalificacionService = {
               model: Calificacion,
               as: "calificaciones",
             },
+            {
+              model: Administrativo,
+              as: "creador",
+              attributes: ["idAdministrativo", "codigoAdministrativo"],
+              include: [
+                {
+                  model: Usuario,
+                  as: "usuario",
+                  attributes: ["nombre", "apellido", "correo"],
+                },
+              ],
+            },
+            {
+              model: Administrativo,
+              as: "actualizador",
+              attributes: ["idAdministrativo", "codigoAdministrativo"],
+              include: [
+                {
+                  model: Usuario,
+                  as: "usuario",
+                  attributes: ["nombre", "apellido", "correo"],
+                },
+              ],
+            },
           ],
         }
       );
@@ -92,6 +144,30 @@ const subCalificacionService = {
           {
             model: TipoCalificacion,
             as: "tipoCalificacion",
+          },
+          {
+            model: Administrativo,
+            as: "creador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "actualizador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
           },
         ],
         order: [["nombre", "ASC"]],
@@ -124,6 +200,7 @@ const subCalificacionService = {
         idTipoCalificacion:
           data.idTipoCalificacion || subCalificacion.idTipoCalificacion,
         fechaActualizacion: new Date(),
+        actualizadoPor: data.actualizadoPor,
       });
 
       return subCalificacion;

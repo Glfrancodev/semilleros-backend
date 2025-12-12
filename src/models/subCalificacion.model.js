@@ -25,6 +25,22 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
       },
+      creadoPor: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: "Administrativo",
+          key: "idAdministrativo",
+        },
+      },
+      actualizadoPor: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: "Administrativo",
+          key: "idAdministrativo",
+        },
+      },
     },
     {
       tableName: "SubCalificacion",
@@ -49,6 +65,18 @@ module.exports = (sequelize, DataTypes) => {
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
     });
+
+    // Auditoría
+    SubCalificacion.belongsTo(models.Administrativo, {
+      as: "creador",
+      foreignKey: "creadoPor",
+    });
+
+    SubCalificacion.belongsTo(models.Administrativo, {
+      as: "actualizador",
+      foreignKey: "actualizadoPor",
+    });
+
   };
 
   return SubCalificacion;

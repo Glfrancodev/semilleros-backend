@@ -69,6 +69,8 @@ const feriaService = {
             nombre: nombre || "Criterios de Evaluación",
             fechaCreacion: new Date(),
             fechaActualizacion: new Date(),
+            creadoPor: data.creadoPor,
+            actualizadoPor: data.actualizadoPor,
           },
           { transaction }
         );
@@ -82,6 +84,8 @@ const feriaService = {
           idTipoCalificacion: tipoCalificacion.idTipoCalificacion,
           fechaCreacion: new Date(),
           fechaActualizacion: new Date(),
+          creadoPor: data.creadoPor,
+          actualizadoPor: data.actualizadoPor,
         }));
 
         await db.SubCalificacion.bulkCreate(subCalificacionesData, {
@@ -122,6 +126,8 @@ const feriaService = {
           idFeria: feria.idFeria,
           fechaCreacion: new Date(),
           fechaActualizacion: new Date(),
+          creadoPor: data.creadoPor,
+          actualizadoPor: data.actualizadoPor,
         }));
 
         await db.Tarea.bulkCreate(tareasConFeria, { transaction });
@@ -444,6 +450,7 @@ const feriaService = {
                 esFinal:
                   tareaData.esFinal !== undefined ? tareaData.esFinal : false,
                 fechaActualizacion: new Date(),
+                actualizadoPor: data.actualizadoPor,
               },
               { transaction }
             );
@@ -460,6 +467,8 @@ const feriaService = {
                   tareaData.esFinal !== undefined ? tareaData.esFinal : false,
                 fechaCreacion: new Date(),
                 fechaActualizacion: new Date(),
+                creadoPor: data.actualizadoPor, // El que actualiza la feria crea la tarea
+                actualizadoPor: data.actualizadoPor,
               },
               { transaction }
             );

@@ -43,6 +43,22 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.UUID,
         allowNull: false,
       },
+      creadoPor: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: "Administrativo",
+          key: "idAdministrativo",
+        },
+      },
+      actualizadoPor: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: "Administrativo",
+          key: "idAdministrativo",
+        },
+      },
     },
     {
       tableName: "Tarea",
@@ -66,6 +82,17 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: { name: "idFeria", allowNull: false },
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
+    });
+
+    // Auditoría
+    Tarea.belongsTo(models.Administrativo, {
+      as: "creador",
+      foreignKey: "creadoPor",
+    });
+
+    Tarea.belongsTo(models.Administrativo, {
+      as: "actualizador",
+      foreignKey: "actualizadoPor",
     });
   };
 

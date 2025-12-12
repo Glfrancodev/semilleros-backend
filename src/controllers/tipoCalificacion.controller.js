@@ -1,4 +1,5 @@
 const tipoCalificacionService = require("../services/tipoCalificacion.service");
+const { Usuario, Administrativo } = require("../models");
 
 const tipoCalificacionController = {
   /**
@@ -13,9 +14,17 @@ const tipoCalificacionController = {
         return res.validationError("El campo nombre es requerido");
       }
 
-      const tipo = await tipoCalificacionService.crearTipoCalificacion(
-        req.body
-      );
+      // 1. Obtener el usuario autenticado con su Administrativo asociado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
+      const tipo = await tipoCalificacionService.crearTipoCalificacion({
+        ...req.body,
+        creadoPor: idAdministrativo,
+        actualizadoPor: idAdministrativo,
+      });
       return res.success("Tipo de calificación creado exitosamente", tipo, 201);
     } catch (error) {
       console.error("Error al crear tipo de calificación:", error);
@@ -78,9 +87,18 @@ const tipoCalificacionController = {
   async actualizarTipoCalificacion(req, res) {
     try {
       const { idTipoCalificacion } = req.params;
+      // 1. Obtener el usuario autenticado con su Administrativo asociado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
       const tipo = await tipoCalificacionService.actualizarTipoCalificacion(
         idTipoCalificacion,
-        req.body
+        {
+          ...req.body,
+          actualizadoPor: idAdministrativo,
+        }
       );
       return res.success("Tipo de calificación actualizado exitosamente", tipo);
     } catch (error) {

@@ -2,6 +2,8 @@ const db = require("../models");
 const Tarea = db.Tarea;
 const Revision = db.Revision;
 const Feria = db.Feria;
+const Administrativo = db.Administrativo;
+const Usuario = db.Usuario;
 
 const tareaService = {
   /**
@@ -18,6 +20,8 @@ const tareaService = {
         idFeria: data.idFeria,
         fechaCreacion: new Date(),
         fechaActualizacion: new Date(),
+        creadoPor: data.creadoPor,
+        actualizadoPor: data.actualizadoPor,
       });
 
       return tarea;
@@ -33,6 +37,32 @@ const tareaService = {
   async obtenerTareas() {
     try {
       const tareas = await Tarea.findAll({
+        include: [
+          {
+            model: Administrativo,
+            as: "creador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "actualizador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+        ],
         order: [["fechaLimite", "ASC"]],
       });
 
@@ -88,6 +118,30 @@ const tareaService = {
               "estado",
             ],
           },
+          {
+            model: Administrativo,
+            as: "creador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "actualizador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
         ],
         order: [["orden", "ASC"]],
       });
@@ -109,6 +163,30 @@ const tareaService = {
           {
             model: Revision,
             as: "revisiones",
+          },
+          {
+            model: Administrativo,
+            as: "creador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "actualizador",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
           },
         ],
       });
@@ -207,6 +285,7 @@ const tareaService = {
         esFinal: data.esFinal !== undefined ? data.esFinal : tarea.esFinal,
         idFeria: data.idFeria || tarea.idFeria,
         fechaActualizacion: new Date(),
+        actualizadoPor: data.actualizadoPor,
       });
 
       return tarea;
