@@ -1,4 +1,5 @@
 const revisionService = require("../services/revision.service");
+const { Usuario, Estudiante, Administrativo } = require("../models");
 
 const revisionController = {
   /**
@@ -15,7 +16,16 @@ const revisionController = {
         );
       }
 
-      const revision = await revisionService.crearRevision(req.body);
+      // Obtener estudiante autenticado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Estudiante, as: "Estudiante" }],
+      });
+      const idEstudiante = usuario?.Estudiante?.idEstudiante;
+
+      const revision = await revisionService.crearRevision({
+        ...req.body,
+        enviadoPor: idEstudiante,
+      });
       return res.success("Revisión creada exitosamente", revision, 201);
     } catch (error) {
       console.error("Error al crear revisión:", error);
@@ -99,9 +109,18 @@ const revisionController = {
   async actualizarRevision(req, res) {
     try {
       const { idRevision } = req.params;
+      // Obtener administrativo autenticado
+      const usuario = await Usuario.findByPk(req.user.idUsuario, {
+        include: [{ model: Administrativo, as: "Administrativo" }],
+      });
+      const idAdministrativo = usuario?.Administrativo?.idAdministrativo;
+
       const revision = await revisionService.actualizarRevision(
         idRevision,
-        req.body
+        {
+          ...req.body,
+          revisadoPor: idAdministrativo,
+        }
       );
       return res.success("Revisión actualizada exitosamente", revision);
     } catch (error) {

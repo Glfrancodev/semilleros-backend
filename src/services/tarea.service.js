@@ -228,6 +228,30 @@ const tareaService = {
             as: "proyecto",
             attributes: ["idProyecto", "nombre", "descripcion"],
           },
+          {
+            model: db.Estudiante,
+            as: "autor",
+            attributes: ["idEstudiante", "codigoEstudiante"],
+            include: [
+              {
+                model: db.Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido"],
+              },
+            ],
+          },
+          {
+            model: db.Administrativo,
+            as: "revisor",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: db.Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido"],
+              },
+            ],
+          },
         ],
         order: [["fechaCreacion", "ASC"]],
       });
@@ -246,6 +270,20 @@ const tareaService = {
         descripcion: r.proyecto?.descripcion,
         fechaEnvio: r.fechaCreacion,
         revisado: r.revisado,
+        enviadoPor: r.autor
+          ? {
+              nombre: r.autor.usuario?.nombre,
+              apellido: r.autor.usuario?.apellido,
+              codigoEstudiante: r.autor.codigoEstudiante,
+            }
+          : null,
+        revisadoPor: r.revisor
+          ? {
+              nombre: r.revisor.usuario?.nombre,
+              apellido: r.revisor.usuario?.apellido,
+              codigoAdministrativo: r.revisor.codigoAdministrativo,
+            }
+          : null,
       }));
 
       return {

@@ -45,6 +45,12 @@ module.exports = (sequelize, DataTypes) => {
       onUpdate: 'CASCADE',
       onDelete: 'CASCADE',
     });
+
+    // Auditoría
+    Estudiante.hasMany(models.Revision, {
+      as: "revisionesEnviadas",
+      foreignKey: "enviadoPor",
+    });
   };
 
   return Estudiante;

@@ -109,6 +109,32 @@ module.exports = (sequelize, DataTypes) => {
       as: "tareasActualizadas",
       foreignKey: "actualizadoPor",
     });
+
+    // --- REVISION ---
+    Administrativo.hasMany(models.Revision, {
+      as: "revisionesRevisadas",
+      foreignKey: "revisadoPor",
+    });
+
+    // --- TIPO CALIFICACION ---
+    Administrativo.hasMany(models.TipoCalificacion, {
+      as: "tiposCalificacionCreados",
+      foreignKey: "creadoPor",
+    });
+    Administrativo.hasMany(models.TipoCalificacion, {
+      as: "tiposCalificacionActualizados",
+      foreignKey: "actualizadoPor",
+    });
+
+    // --- SUB CALIFICACION ---
+    Administrativo.hasMany(models.SubCalificacion, {
+      as: "subCalificacionesCreadas",
+      foreignKey: "creadoPor",
+    });
+    Administrativo.hasMany(models.SubCalificacion, {
+      as: "subCalificacionesActualizadas",
+      foreignKey: "actualizadoPor",
+    });
   };
 
   return Administrativo;

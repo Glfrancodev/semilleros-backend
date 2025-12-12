@@ -1,7 +1,10 @@
 const express = require('express');
 const revisionController = require('../controllers/revision.controller');
+const { validarToken } = require('../middleware/authMiddleware');
 
 const router = express.Router();
+
+router.use(validarToken);
 
 // POST /api/revisiones - Crear revisión
 router.post('/', revisionController.crearRevision);

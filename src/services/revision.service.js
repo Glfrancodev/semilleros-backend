@@ -1,6 +1,9 @@
 const db = require("../models");
 const Revision = db.Revision;
 const Proyecto = db.Proyecto;
+const Estudiante = db.Estudiante;
+const Administrativo = db.Administrativo;
+const Usuario = db.Usuario;
 
 const revisionService = {
   /**
@@ -14,7 +17,9 @@ const revisionService = {
         idProyecto: data.idProyecto,
         idTarea: data.idTarea,
         fechaCreacion: new Date(),
+        fechaCreacion: new Date(),
         fechaActualizacion: new Date(),
+        enviadoPor: data.enviadoPor, // Estudiante
       });
 
       return revision;
@@ -41,6 +46,30 @@ const revisionService = {
             as: "archivos",
             attributes: ["idArchivo", "nombre", "formato", "tamano"],
           },
+          {
+            model: Estudiante,
+            as: "autor",
+            attributes: ["idEstudiante", "codigoEstudiante"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "revisor",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
         ],
         order: [["fechaCreacion", "DESC"]],
       });
@@ -66,6 +95,30 @@ const revisionService = {
           {
             model: db.Archivo,
             as: "archivos",
+          },
+          {
+            model: Estudiante,
+            as: "autor",
+            attributes: ["idEstudiante", "codigoEstudiante"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "revisor",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
           },
         ],
       });
@@ -96,6 +149,30 @@ const revisionService = {
               {
                 model: db.Feria,
                 as: "feria",
+              },
+            ],
+          },
+          {
+            model: Estudiante,
+            as: "autor",
+            attributes: ["idEstudiante", "codigoEstudiante"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
+              },
+            ],
+          },
+          {
+            model: Administrativo,
+            as: "revisor",
+            attributes: ["idAdministrativo", "codigoAdministrativo"],
+            include: [
+              {
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido", "correo"],
               },
             ],
           },
@@ -136,6 +213,7 @@ const revisionService = {
         revisado:
           data.revisado !== undefined ? data.revisado : revision.revisado,
         fechaActualizacion: new Date(),
+        revisadoPor: data.revisadoPor, // Administrativo
       });
 
       // Si es la tarea 0 (inscripción) y se asignó un puntaje, actualizar estaAprobado del proyecto

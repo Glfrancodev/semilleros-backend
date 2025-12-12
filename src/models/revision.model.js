@@ -29,6 +29,22 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
       },
+      enviadoPor: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: "Estudiante",
+          key: "idEstudiante",
+        },
+      },
+      revisadoPor: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: "Administrativo",
+          key: "idAdministrativo",
+        },
+      },
     },
     {
       tableName: "Revision",
@@ -52,6 +68,17 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: { name: "idTarea", allowNull: false },
       onUpdate: "CASCADE",
       onDelete: "CASCADE", // Si se elimina la tarea, se eliminan sus revisiones
+    });
+
+    // Auditoría
+    Revision.belongsTo(models.Estudiante, {
+      as: "autor",
+      foreignKey: "enviadoPor",
+    });
+
+    Revision.belongsTo(models.Administrativo, {
+      as: "revisor",
+      foreignKey: "revisadoPor",
     });
   };
 
