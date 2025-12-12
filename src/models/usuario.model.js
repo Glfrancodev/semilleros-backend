@@ -68,11 +68,21 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
       },
+      creadoPor: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
+      actualizadoPor: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
     },
     {
       tableName: "Usuario",
       freezeTableName: true,
-      timestamps: false,
+      timestamps: true, // Changed to true
+      createdAt: "fechaCreacion", // Mapped createdAt to fechaCreacion
+      updatedAt: "fechaActualizacion", // Mapped updatedAt to fechaActualizacion
       defaultScope: {
         // Excluir la contraseña por defecto
         attributes: { exclude: ["contrasena"] },
@@ -140,6 +150,16 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "idFotoPerfil",
       onUpdate: "CASCADE",
       onDelete: "SET NULL",
+    });
+
+    // Auditoría (Referencia a Administrativo)
+    Usuario.belongsTo(models.Administrativo, {
+      as: "creador",
+      foreignKey: "creadoPor",
+    });
+    Usuario.belongsTo(models.Administrativo, {
+      as: "actualizador",
+      foreignKey: "actualizadoPor",
     });
   };
 

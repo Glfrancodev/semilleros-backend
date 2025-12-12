@@ -24,4 +24,22 @@ const validarToken = (req, res, next) => {
   }
 };
 
-module.exports = { validarToken };
+const validarTokenOpcional = (req, res, next) => {
+  try {
+    const token = req.headers.authorization
+      ? req.headers.authorization.split(" ")[1]
+      : null;
+
+    if (token) {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+    }
+  } catch (err) {
+    // Si el token es inválido, simplemente no asignamos req.user
+    // No devolvemos error para permitir acceso público
+    console.warn("Token inválido en ruta opcional:", err.message);
+  }
+  next();
+};
+
+module.exports = { validarToken, validarTokenOpcional };

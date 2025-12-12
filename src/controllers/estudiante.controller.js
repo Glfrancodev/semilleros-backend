@@ -1,9 +1,24 @@
 const estudianteService = require("../services/estudiante.service");
+const administrativoService = require("../services/administrativo.service");
 
 // Crear un nuevo Estudiante
 const crearEstudiante = async (req, res, next) => {
   try {
-    const nuevoEstudiante = await estudianteService.crearEstudiante(req.body);
+    let idAdministrativo = null;
+    if (req.user) {
+      const admin = await administrativoService.obtenerAdministrativoPorUsuario(
+        req.user.idUsuario
+      );
+      if (admin) {
+        idAdministrativo = admin.idAdministrativo;
+      }
+    }
+
+    const nuevoEstudiante = await estudianteService.crearEstudiante({
+      ...req.body,
+      creadoPor: idAdministrativo,
+      actualizadoPor: idAdministrativo,
+    });
     return res.success("Estudiante creado exitosamente", nuevoEstudiante, 201);
   } catch (err) {
     console.error("Error al crear estudiante:", err);
@@ -74,9 +89,22 @@ const obtenerEstudiantePorId = async (req, res, next) => {
 // Actualizar un Estudiante
 const actualizarEstudiante = async (req, res, next) => {
   try {
+    let idAdministrativo = null;
+    if (req.user) {
+      const admin = await administrativoService.obtenerAdministrativoPorUsuario(
+        req.user.idUsuario
+      );
+      if (admin) {
+        idAdministrativo = admin.idAdministrativo;
+      }
+    }
+
     const [actualizados] = await estudianteService.actualizarEstudiante(
       req.params.id,
-      req.body
+      {
+        ...req.body,
+        actualizadoPor: idAdministrativo,
+      }
     );
     if (actualizados === 0) return res.notFound("Estudiante");
 

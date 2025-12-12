@@ -26,6 +26,28 @@ const obtenerUsuarios = async () => {
         as: "fotoPerfil",
         attributes: ["idArchivo", "url", "formato"],
       },
+      {
+        model: Administrativo,
+        as: "creador",
+        include: [
+          {
+            model: Usuario,
+            as: "usuario",
+            attributes: ["nombre", "apellido", "correo"],
+          },
+        ],
+      },
+      {
+        model: Administrativo,
+        as: "actualizador",
+        include: [
+          {
+            model: Usuario,
+            as: "usuario",
+            attributes: ["nombre", "apellido", "correo"],
+          },
+        ],
+      },
     ],
   });
 
@@ -69,6 +91,28 @@ const obtenerUsuarioPorId = async (idUsuario) => {
         model: Archivo,
         as: "fotoPerfil",
         attributes: ["idArchivo", "url", "formato"],
+      },
+      {
+        model: Administrativo,
+        as: "creador",
+        include: [
+          {
+            model: Usuario,
+            as: "usuario",
+            attributes: ["nombre", "apellido", "correo"],
+          },
+        ],
+      },
+      {
+        model: Administrativo,
+        as: "actualizador",
+        include: [
+          {
+            model: Usuario,
+            as: "usuario",
+            attributes: ["nombre", "apellido", "correo"],
+          },
+        ],
       },
     ],
   });

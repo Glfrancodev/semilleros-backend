@@ -1,11 +1,26 @@
 const usuarioService = require("../services/usuario.service");
 const authService = require("../services/auth.service");
 const archivoService = require("../services/archivo.service");
+const administrativoService = require("../services/administrativo.service");
 
 // Crear Usuario
 const crearUsuario = async (req, res, next) => {
   try {
-    const nuevoUsuario = await usuarioService.crearUsuario(req.body);
+    let idAdministrativo = null;
+    if (req.user) {
+      const admin = await administrativoService.obtenerAdministrativoPorUsuario(
+        req.user.idUsuario
+      );
+      if (admin) {
+        idAdministrativo = admin.idAdministrativo;
+      }
+    }
+
+    const nuevoUsuario = await usuarioService.crearUsuario({
+      ...req.body,
+      creadoPor: idAdministrativo,
+      actualizadoPor: idAdministrativo,
+    });
     return res.success("Usuario creado exitosamente", nuevoUsuario, 201);
   } catch (err) {
     console.error("Error al crear usuario:", err);
@@ -68,9 +83,22 @@ const obtenerPerfil = async (req, res, next) => {
 // Actualizar Usuario
 const actualizarUsuario = async (req, res, next) => {
   try {
+    let idAdministrativo = null;
+    if (req.user) {
+      const admin = await administrativoService.obtenerAdministrativoPorUsuario(
+        req.user.idUsuario
+      );
+      if (admin) {
+        idAdministrativo = admin.idAdministrativo;
+      }
+    }
+
     const [actualizados] = await usuarioService.actualizarUsuario(
       req.params.id,
-      req.body
+      {
+        ...req.body,
+        actualizadoPor: idAdministrativo,
+      }
     );
     if (actualizados === 0) return res.notFound("Usuario");
 

@@ -1,9 +1,24 @@
 const docenteService = require("../services/docente.service");
+const administrativoService = require("../services/administrativo.service");
 
 // Crear un nuevo Docente
 const crearDocente = async (req, res, next) => {
   try {
-    const nuevoDocente = await docenteService.crearDocente(req.body);
+    let idAdministrativo = null;
+    if (req.user) {
+      const admin = await administrativoService.obtenerAdministrativoPorUsuario(
+        req.user.idUsuario
+      );
+      if (admin) {
+        idAdministrativo = admin.idAdministrativo;
+      }
+    }
+
+    const nuevoDocente = await docenteService.crearDocente({
+      ...req.body,
+      creadoPor: idAdministrativo,
+      actualizadoPor: idAdministrativo,
+    });
     return res.success("Docente creado exitosamente", nuevoDocente, 201);
   } catch (err) {
     console.error("Error al crear docente:", err);
@@ -53,9 +68,22 @@ const obtenerDocentePorId = async (req, res, next) => {
 // Actualizar un Docente
 const actualizarDocente = async (req, res, next) => {
   try {
+    let idAdministrativo = null;
+    if (req.user) {
+      const admin = await administrativoService.obtenerAdministrativoPorUsuario(
+        req.user.idUsuario
+      );
+      if (admin) {
+        idAdministrativo = admin.idAdministrativo;
+      }
+    }
+
     const [actualizados] = await docenteService.actualizarDocente(
       req.params.id,
-      req.body
+      {
+        ...req.body,
+        actualizadoPor: idAdministrativo,
+      }
     );
     if (actualizados === 0) return res.notFound("Docente");
 

@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const router = express.Router();
 const usuarioController = require("../controllers/usuario.controller");
-const { validarToken } = require("../middleware/authMiddleware");
+const { validarToken, validarTokenOpcional } = require("../middleware/authMiddleware");
 
 // Configurar Multer para foto de perfil
 const storage = multer.memoryStorage();
@@ -22,7 +22,7 @@ const upload = multer({
 });
 
 // Ruta para crear un nuevo usuario
-router.post("/", usuarioController.crearUsuario);
+router.post("/", validarTokenOpcional, usuarioController.crearUsuario);
 
 // Ruta para obtener todos los usuarios
 router.get("/", usuarioController.obtenerUsuarios);
@@ -45,7 +45,7 @@ router.post(
 router.get("/:id", usuarioController.obtenerUsuarioPorId);
 
 // Ruta para actualizar un usuario
-router.put("/:id", usuarioController.actualizarUsuario);
+router.put("/:id", validarTokenOpcional, usuarioController.actualizarUsuario);
 
 // Ruta para cambiar el estado (soft delete) de un usuario
 router.patch("/:id/estado", usuarioController.toggleEstadoUsuario);
