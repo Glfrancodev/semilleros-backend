@@ -29,6 +29,7 @@ const areaRoutes = require("./area.routes"); // Rutas de Area
 const areaCategoriaRoutes = require("./areaCategoria.routes"); // Rutas de AreaCategoria
 const colaboracionRoutes = require("./colaboracion.routes"); // Rutas de Colaboración
 const tareaRoutes = require("./tarea.routes"); // Rutas de Tarea
+const reportsRoutes = require("./reports.routes"); // Rutas de Reportes
 
 router.use("/grupo-materias", grupoMateriaRoutes); // 👉 /api/grupo-materias
 
@@ -97,6 +98,9 @@ router.use("/rol-permisos", rolPermisoRoutes); // 👉 /api/rol-permisos
 router.use("/usuarios", usuarioRoutes); // 👉 /api/usuarios
 router.use("/seed", dataSeederRoutes); // Asociamos la nueva ruta
 router.use("/colaboracion", colaboracionRoutes); // 👉 /api/colaboracion
+
+// Rutas de Reportes
+router.use("/reports/feria-actual", reportsRoutes); // 👉 /api/reports/feria-actual
 
 // Ruta para manejar EstudianteProyecto
 router.use("/api/estudiante-proyecto", estudianteProyectoRoutes);
