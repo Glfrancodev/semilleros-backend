@@ -961,3 +961,95 @@ module.exports = {
   getMatrizAreaCategoriaGlobal,
 };
 
+// ============================================
+// REPORTES DESCARGABLES - FERIA ACTUAL
+// ============================================
+
+/**
+ * Control de Notas: Matriz de proyectos x tareas con calificaciones
+ */
+const getControlNotasFeriaActual = async (req, res) => {
+  try {
+    const filtros = {
+      areaId: req.query.areaId,
+      categoriaId: req.query.categoriaId,
+      grupoMateriaId: req.query.grupoMateriaId,
+      materiaId: req.query.materiaId,
+      semestreId: req.query.semestreId,
+    };
+
+    const data = await reportsService.getControlNotasFeriaActual(filtros);
+
+    return res.success("Control de notas obtenido exitosamente", {
+      ...data,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Error al obtener control de notas:", err);
+
+    if (err.message === "No hay una feria activa en este momento") {
+      return res.error(err.message, 404, {
+        code: "NO_ACTIVE_FERIA",
+        details: err.message,
+      });
+    }
+
+    return res.error("Error al obtener control de notas", 500, {
+      code: "INTERNAL_ERROR",
+      details: err.message,
+    });
+  }
+};
+
+module.exports = {
+  // ============================================
+  // FERIA ACTUAL
+  // ============================================
+  
+  // KPIs
+  getProyectosInscritos,
+  getEstudiantesParticipantes,
+  getTutores,
+  getJurados,
+  getEventosRealizados,
+  getPorcentajeAprobadosTutor,
+  getPorcentajeAprobadosAdmin,
+  getPorcentajeAprobadosExposicion,
+
+  // Gráficos
+  getProyectosPorEstado,
+  getParticipacionAreaCategoria,
+  getCargaDesempenoJurados,
+  getCalificacionesFeria,
+  getParticipacionEventos,
+
+  // Auxiliares
+  getFeriaActualInfo,
+
+  // Reportes Descargables
+  getControlNotasFeriaActual,
+
+  // ============================================
+  // REPORTES GLOBALES
+  // ============================================
+  
+  // KPIs Globales
+  getProyectosPorFeriaGlobal,
+  getEstudiantesPorFeriaGlobal,
+  getJuradosPorFeriaGlobal,
+  getTutoresPorFeriaGlobal,
+
+  // Tendencias Globales
+  getAreasFrecuentesGlobal,
+  getCategoriasFrecuentesGlobal,
+  getComparacionFeriasGlobal,
+
+  // Rendimiento Académico Global
+  getPromediosPorFeriaGlobal,
+  getRankingAreasRendimientoGlobal,
+
+  // Matriz Área vs Categoría
+  getMatrizAreaCategoriaGlobal,
+};
+
+

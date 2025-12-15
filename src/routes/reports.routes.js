@@ -84,6 +84,14 @@ router.get(
 router.get("/feria-actual/info", reportsController.getFeriaActualInfo);
 
 // ============================================
+// REPORTES DESCARGABLES - FERIA ACTUAL
+// ============================================
+
+// Control de Notas: Matriz de proyectos x tareas con calificaciones
+router.get("/feria-actual/control-notas", reportsController.getControlNotasFeriaActual);
+
+
+// ============================================
 // REPORTES GLOBALES - KPIs
 // ============================================
 

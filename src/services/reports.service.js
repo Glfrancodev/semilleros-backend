@@ -3115,4 +3115,291 @@ module.exports = {
   getMatrizAreaCategoriaGlobal,
 };
 
+// ============================================
+// REPORTES DESCARGABLES - FERIA ACTUAL
+// ============================================
+
+/**
+ * Control de Notas: Matriz de proyectos x tareas con calificaciones
+ * Devuelve una matriz donde:
+ * - Filas: Proyectos de la feria actual
+ * - Columnas: Tareas de la feria actual
+ * - Celdas: Estado de revisión (calificación, pendiente, no enviado)
+ */
+const getControlNotasFeriaActual = async (filtros = {}) => {
+  try {
+    // 1. Obtener feria actual
+    const feria = await getFeriaActual();
+
+    // 2. Obtener todas las tareas de la feria (ordenadas por orden)
+    const tareas = await Tarea.findAll({
+      where: { idFeria: feria.idFeria },
+      order: [["orden", "ASC"]],
+      attributes: ["idTarea", "orden", "nombre", "descripcion", "fechaCreacion", "fechaActualizacion"],
+    });
+
+    // 3. Obtener todos los proyectos con sus relaciones
+    const proyectos = await Proyecto.findAll({
+      include: [
+        {
+          model: GrupoMateria,
+          as: "grupoMateria",
+          required: false,
+          where: filtros.grupoMateriaId ? { idGrupoMateria: filtros.grupoMateriaId } : {},
+          include: [
+            {
+              model: Materia,
+              as: "materia",
+              required: false,
+              where: filtros.materiaId ? { idMateria: filtros.materiaId } : {},
+              include: [
+                {
+                  model: Semestre,
+                  as: "semestre",
+                  required: false,
+                  where: filtros.semestreId ? { idSemestre: filtros.semestreId } : {},
+                },
+                {
+                  model: AreaCategoria,
+                  as: "areaCategoria",
+                  required: filtros.areaId || filtros.categoriaId ? true : false,
+                  where: filtros.areaId || filtros.categoriaId ? {
+                    ...(filtros.areaId && { idArea: filtros.areaId }),
+                    ...(filtros.categoriaId && { idCategoria: filtros.categoriaId }),
+                  } : {},
+                  include: [
+                    {
+                      model: Area,
+                      as: "area",
+                      attributes: ["idArea", "nombre"],
+                    },
+                    {
+                      model: Categoria,
+                      as: "categoria",
+                      attributes: ["idCategoria", "nombre"],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          model: Revision,
+          as: "revisiones",
+          required: false,
+          include: [
+            {
+              model: Tarea,
+              as: "tarea",
+              attributes: ["idTarea", "orden", "nombre"],
+            },
+          ],
+        },
+      ],
+      attributes: ["idProyecto", "nombre", "descripcion", "fechaCreacion", "estaAprobado", "estaAprobadoTutor", "esFinal"],
+      order: [["nombre", "ASC"]],
+    });
+
+    console.log('=== DEBUG CONTROL NOTAS ===');
+    console.log('Feria actual:', feria.idFeria, feria.nombre);
+    console.log('Total proyectos obtenidos:', proyectos.length);
+    console.log('IDs de tareas de esta feria:', tareas.map(t => t.idTarea));
+    
+    proyectos.forEach((p, index) => {
+      const tareasDelProyecto = p.revisiones?.map(r => r.idTarea) || [];
+      const tieneRevisionDeFeria = p.revisiones?.some(r => 
+        tareas.some(t => t.idTarea === r.idTarea)
+      );
+      
+      console.log(`\nProyecto ${index + 1}:`, {
+        id: p.idProyecto,
+        nombre: p.nombre,
+        totalRevisiones: p.revisiones?.length || 0,
+        tareasDelProyecto,
+        tieneRevisionDeFeria,
+      });
+    });
+
+    // Filtrar proyectos que tienen al menos una revisión de una tarea de la feria actual
+    const proyectosFiltrados = proyectos.filter(proyecto => {
+      // Un proyecto pertenece a la feria si tiene al menos una revisión de una tarea de esa feria
+      return proyecto.revisiones?.some(revision => 
+        tareas.some(tarea => tarea.idTarea === revision.idTarea)
+      );
+    });
+
+    console.log('\nProyectos filtrados:', proyectosFiltrados.length);
+    console.log('=== FIN DEBUG ===\n');
+
+    // 5. Construir la matriz
+    const matriz = proyectosFiltrados.map((proyecto) => {
+      // Crear un mapa de revisiones por tarea para acceso rápido
+      const revisionesPorTarea = {};
+      proyecto.revisiones.forEach((revision) => {
+        if (revision.tarea) {
+          revisionesPorTarea[revision.tarea.idTarea] = revision;
+        }
+      });
+
+      // Construir el estado de cada tarea
+      const tareasEstado = tareas.map((tarea) => {
+        const revision = revisionesPorTarea[tarea.idTarea];
+
+        if (!revision) {
+          // No se ha enviado la tarea
+          return {
+            idTarea: tarea.idTarea,
+            ordenTarea: tarea.orden,
+            nombreTarea: tarea.nombre,
+            estado: "no_enviado",
+            calificacion: null,
+            comentario: null,
+            fechaEnvio: null,
+            fechaRevision: null,
+          };
+        }
+
+        if (!revision.revisado) {
+          // Se envió pero no fue revisado
+          return {
+            idTarea: tarea.idTarea,
+            ordenTarea: tarea.orden,
+            nombreTarea: tarea.nombre,
+            estado: "pendiente_revision",
+            calificacion: null,
+            comentario: revision.comentario || null,
+            fechaEnvio: revision.fechaCreacion,
+            fechaRevision: null,
+          };
+        }
+
+        // Fue revisado y tiene calificación
+        return {
+          idTarea: tarea.idTarea,
+          ordenTarea: tarea.orden,
+          nombreTarea: tarea.nombre,
+          estado: "revisado",
+          calificacion: revision.puntaje,
+          comentario: revision.comentario || null,
+          fechaEnvio: revision.fechaCreacion,
+          fechaRevision: revision.fechaActualizacion,
+        };
+      });
+
+      return {
+        proyecto: {
+          idProyecto: proyecto.idProyecto,
+          nombre: proyecto.nombre,
+          descripcion: proyecto.descripcion,
+          fechaCreacion: proyecto.fechaCreacion,
+          estaAprobado: proyecto.estaAprobado,
+          estaAprobadoTutor: proyecto.estaAprobadoTutor,
+          esFinal: proyecto.esFinal,
+          area: proyecto.grupoMateria?.materia?.areaCategoria?.area?.nombre || null,
+          categoria: proyecto.grupoMateria?.materia?.areaCategoria?.categoria?.nombre || null,
+        },
+        tareas: tareasEstado,
+      };
+    });
+
+    // 6. Calcular estadísticas generales
+    const estadisticas = {
+      totalProyectos: proyectosFiltrados.length,
+      totalTareas: tareas.length,
+      tareasRevisadas: 0,
+      tareasPendientes: 0,
+      tareasNoEnviadas: 0,
+    };
+
+    matriz.forEach((fila) => {
+      fila.tareas.forEach((tarea) => {
+        if (tarea.estado === "revisado") estadisticas.tareasRevisadas++;
+        else if (tarea.estado === "pendiente_revision") estadisticas.tareasPendientes++;
+        else if (tarea.estado === "no_enviado") estadisticas.tareasNoEnviadas++;
+      });
+    });
+
+    return {
+      feria: {
+        idFeria: feria.idFeria,
+        nombre: feria.nombre,
+        estado: feria.estado,
+      },
+      tareas: tareas.map((t) => ({
+        idTarea: t.idTarea,
+        orden: t.orden,
+        nombre: t.nombre,
+        descripcion: t.descripcion,
+        fechaCreacion: t.fechaCreacion,
+        fechaActualizacion: t.fechaActualizacion,
+      })),
+      matriz,
+      estadisticas,
+      filtros: {
+        areaId: filtros.areaId || null,
+        categoriaId: filtros.categoriaId || null,
+        grupoMateriaId: filtros.grupoMateriaId || null,
+        materiaId: filtros.materiaId || null,
+        semestreId: filtros.semestreId || null,
+      },
+    };
+  } catch (error) {
+    console.error("Error en getControlNotasFeriaActual:", error);
+    throw error;
+  }
+};
+
+module.exports = {
+  // ============================================
+  // FERIA ACTUAL
+  // ============================================
+  
+  // KPIs
+  getProyectosInscritos,
+  getEstudiantesParticipantes,
+  getTutores,
+  getJurados,
+  getEventosRealizados,
+  getPorcentajeAprobadosTutor,
+  getPorcentajeAprobadosAdmin,
+  getPorcentajeAprobadosExposicion,
+
+  // Gráficos
+  getProyectosPorEstado,
+  getParticipacionAreaCategoria,
+  getCargaDesempenoJurados,
+  getCalificacionesFeria,
+  getParticipacionEventos,
+
+  // Auxiliar
+  getFeriaActualInfo,
+
+  // Reportes Descargables
+  getControlNotasFeriaActual,
+
+  // ============================================
+  // REPORTES GLOBALES
+  // ============================================
+  
+  // KPIs Globales
+  getProyectosPorFeriaGlobal,
+  getEstudiantesPorFeriaGlobal,
+  getJuradosPorFeriaGlobal,
+  getTutoresPorFeriaGlobal,
+
+  // Tendencias Globales
+  getAreasFrecuentesGlobal,
+  getCategoriasFrecuentesGlobal,
+  getComparacionFeriasGlobal,
+
+  // Rendimiento Académico Global
+  getPromediosPorFeriaGlobal,
+  getRankingAreasRendimientoGlobal,
+
+  // Matriz Área vs Categoría
+  getMatrizAreaCategoriaGlobal,
+};
+
+
 
