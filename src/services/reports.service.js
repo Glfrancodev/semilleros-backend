@@ -2459,24 +2459,31 @@ const getPromediosPorFeriaGlobal = async (filtros = {}) => {
     const todosPromedios = [];
 
     for (const feria of ferias) {
-      // Obtener calificaciones totales por proyecto (suma de subcalificaciones por DocenteProyecto)
+      // Obtener calificaciones totales por proyecto (promedio de jurados)
       const calificaciones = await sequelize.query(`
-        SELECT SUM(c."puntajeObtenido") as "puntajeTotal"
-        FROM "Calificacion" c
-        INNER JOIN "DocenteProyecto" dp ON dp."idDocenteProyecto" = c."idDocenteProyecto"
-        INNER JOIN "Proyecto" p ON p."idProyecto" = dp."idProyecto"
-        INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
-        INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
-        ${filtros.areaId || filtros.categoriaId ? `
-        INNER JOIN "GrupoMateria" gm ON gm."idGrupoMateria" = p."idGrupoMateria"
-        INNER JOIN "Materia" m ON m."idMateria" = gm."idMateria"
-        INNER JOIN "AreaCategoria" ac ON ac."idAreaCategoria" = m."idAreaCategoria"
-        ` : ''}
-        WHERE t."idFeria" = :idFeria
-        AND c."calificado" = true
-        ${filtros.areaId ? 'AND ac."idArea" = :idArea' : ''}
-        ${filtros.categoriaId ? 'AND ac."idCategoria" = :idCategoria' : ''}
-        GROUP BY dp."idDocenteProyecto"
+        SELECT AVG(calificaciones_jurado."puntajeTotal") as "puntajeTotal"
+        FROM (
+          SELECT 
+            dp."idProyecto",
+            dp."idDocenteProyecto",
+            SUM(c."puntajeObtenido") as "puntajeTotal"
+          FROM "Calificacion" c
+          INNER JOIN "DocenteProyecto" dp ON dp."idDocenteProyecto" = c."idDocenteProyecto"
+          INNER JOIN "Proyecto" p ON p."idProyecto" = dp."idProyecto"
+          INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+          INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+          ${filtros.areaId || filtros.categoriaId ? `
+          INNER JOIN "GrupoMateria" gm ON gm."idGrupoMateria" = p."idGrupoMateria"
+          INNER JOIN "Materia" m ON m."idMateria" = gm."idMateria"
+          INNER JOIN "AreaCategoria" ac ON ac."idAreaCategoria" = m."idAreaCategoria"
+          ` : ''}
+          WHERE t."idFeria" = :idFeria
+          AND c."calificado" = true
+          ${filtros.areaId ? 'AND ac."idArea" = :idArea' : ''}
+          ${filtros.categoriaId ? 'AND ac."idCategoria" = :idCategoria' : ''}
+          GROUP BY dp."idProyecto", dp."idDocenteProyecto"
+        ) calificaciones_jurado
+        GROUP BY calificaciones_jurado."idProyecto"
       `, {
         replacements: {
           idFeria: feria.idFeria,
