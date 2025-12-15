@@ -2493,6 +2493,9 @@ const getPromediosPorFeriaGlobal = async (filtros = {}) => {
         type: sequelize.QueryTypes.SELECT
       });
 
+      console.log('🔍 DEBUG - Calificaciones query result:', JSON.stringify(calificaciones.slice(0, 3), null, 2));
+      console.log('🔍 DEBUG - Total calificaciones:', calificaciones.length);
+
       const puntajes = calificaciones.map(c => parseFloat(c.puntajeTotal));
       
       if (puntajes.length === 0) {
