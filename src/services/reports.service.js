@@ -1610,6 +1610,7 @@ const getProyectosPorFeriaGlobal = async (filtros = {}) => {
         INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
         INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
         WHERE t."idFeria" = :idFeria
+        AND t."orden" = 0
         ${filtros.areaId ? 'AND p."idArea" = :idArea' : ''}
         ${filtros.categoriaId ? 'AND p."idCategoria" = :idCategoria' : ''}
       `, {
@@ -1709,6 +1710,7 @@ const getEstudiantesPorFeriaGlobal = async (filtros = {}) => {
         INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
         INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
         WHERE t."idFeria" = :idFeria
+        AND t."orden" = 0
         ${filtros.areaId ? 'AND p."idArea" = :idArea' : ''}
         ${filtros.categoriaId ? 'AND p."idCategoria" = :idCategoria' : ''}
       `, {
@@ -1740,7 +1742,7 @@ const getEstudiantesPorFeriaGlobal = async (filtros = {}) => {
       valorAnterior = totalEstudiantes;
     }
 
-    const totales = series.map(s => s.totalEstudiantes);
+    const totales = series.map(s => s.estudiantesUnicos);
     const promedioEstudiantesPorFeria = totales.length > 0
       ? parseFloat((totales.reduce((a, b) => a + b, 0) / totales.length).toFixed(1))
       : 0;
@@ -1798,13 +1800,14 @@ const getJuradosPorFeriaGlobal = async (filtros = {}) => {
       // Contar jurados de esta feria a través de Tarea → Revision → Proyecto → DocenteProyecto
       const juradosCount = await sequelize.query(`
         SELECT 
-          COUNT(dp."idDocente") as total,
+          COUNT(DISTINCT dp."idDocenteProyecto") as total,
           COUNT(DISTINCT dp."idDocente") as unicos
         FROM "DocenteProyecto" dp
         INNER JOIN "Proyecto" p ON p."idProyecto" = dp."idProyecto"
         INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
         INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
         WHERE t."idFeria" = :idFeria
+        AND t."orden" = 0
         ${filtros.areaId ? 'AND p."idArea" = :idArea' : ''}
         ${filtros.categoriaId ? 'AND p."idCategoria" = :idCategoria' : ''}
       `, {
@@ -1840,7 +1843,7 @@ const getJuradosPorFeriaGlobal = async (filtros = {}) => {
       valorAnterior = totalJurados;
     }
 
-    const totales = series.map(s => s.totalJurados);
+    const totales = series.map(s => s.juradosUnicos);
     const promedioJuradosPorFeria = totales.length > 0
       ? parseFloat((totales.reduce((a, b) => a + b, 0) / totales.length).toFixed(1))
       : 0;
@@ -1895,13 +1898,14 @@ const getTutoresPorFeriaGlobal = async (filtros = {}) => {
       // Contar tutores de esta feria a través de Tarea → Revision → Proyecto → GrupoMateria → Docente
       const tutoresCount = await sequelize.query(`
         SELECT 
-          COUNT(gm."idDocente") as total,
+          COUNT(DISTINCT p."idGrupoMateria") as total,
           COUNT(DISTINCT gm."idDocente") as unicos
         FROM "Proyecto" p
         INNER JOIN "GrupoMateria" gm ON gm."idGrupoMateria" = p."idGrupoMateria"
         INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
         INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
         WHERE t."idFeria" = :idFeria
+        AND t."orden" = 0
         ${filtros.areaId ? 'AND p."idArea" = :idArea' : ''}
         ${filtros.categoriaId ? 'AND p."idCategoria" = :idCategoria' : ''}
       `, {
@@ -1937,7 +1941,7 @@ const getTutoresPorFeriaGlobal = async (filtros = {}) => {
       valorAnterior = totalTutores;
     }
 
-    const totales = series.map(s => s.totalTutores);
+    const totales = series.map(s => s.tutoresUnicos);
     const promedioTutoresPorFeria = totales.length > 0
       ? parseFloat((totales.reduce((a, b) => a + b, 0) / totales.length).toFixed(1))
       : 0;
