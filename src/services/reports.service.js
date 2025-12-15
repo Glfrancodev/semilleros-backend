@@ -785,9 +785,8 @@ const getProyectosPorEstado = async (filtros = {}) => {
   const contadores = {
     calificado: 0,
     conJurados: 0,
-    aprobadoParaExponerEnFeria: 0,
-    aprobadoAdministrador: 0,
-    aprobadoTutor: 0,
+    aprobado: 0,
+    rechazado: 0,
     borrador: 0,
   };
 
@@ -800,23 +799,15 @@ const getProyectosPorEstado = async (filtros = {}) => {
     else if (cantidadJurados === 3) {
       contadores.conJurados++;
     }
-    // Prioridad 3: Aprobado para Exponer en Feria
-    else if (
-      p.estaAprobadoTutor === true &&
-      p.estaAprobado === true &&
-      p.esFinal === true
-    ) {
-      contadores.aprobadoParaExponerEnFeria++;
+    // Prioridad 3: Rechazado (alguno de los dos está en false)
+    else if (p.estaAprobadoTutor === false || p.estaAprobado === false) {
+      contadores.rechazado++;
     }
-    // Prioridad 4: Aprobado por Administrador
-    else if (p.estaAprobado === true) {
-      contadores.aprobadoAdministrador++;
+    // Prioridad 4: Aprobado (ambos en true)
+    else if (p.estaAprobadoTutor === true && p.estaAprobado === true) {
+      contadores.aprobado++;
     }
-    // Prioridad 5: Aprobado por Tutor
-    else if (p.estaAprobadoTutor === true) {
-      contadores.aprobadoTutor++;
-    }
-    // Prioridad 6: Borrador (aprobadoTutor y aprobadoAdministrador null o false)
+    // Prioridad 5: Borrador (alguno de los dos está en null)
     else {
       contadores.borrador++;
     }
@@ -825,7 +816,7 @@ const getProyectosPorEstado = async (filtros = {}) => {
   const estados = [
     {
       estado: "borrador",
-      descripcion: "Proyectos en borrador (sin aprobaciones)",
+      descripcion: "Proyectos en borrador (aprobaciones pendientes)",
       cantidad: contadores.borrador,
       porcentaje:
         totalProyectos > 0
@@ -833,34 +824,21 @@ const getProyectosPorEstado = async (filtros = {}) => {
           : 0,
     },
     {
-      estado: "aprobado_tutor",
-      descripcion: "Proyectos aprobados por tutor",
-      cantidad: contadores.aprobadoTutor,
+      estado: "aprobado",
+      descripcion: "Proyectos aprobados por tutor y administrador",
+      cantidad: contadores.aprobado,
       porcentaje:
         totalProyectos > 0
-          ? parseFloat(((contadores.aprobadoTutor / totalProyectos) * 100).toFixed(1))
+          ? parseFloat(((contadores.aprobado / totalProyectos) * 100).toFixed(1))
           : 0,
     },
     {
-      estado: "aprobado_administrador",
-      descripcion: "Proyectos aprobados por administrador",
-      cantidad: contadores.aprobadoAdministrador,
+      estado: "rechazado",
+      descripcion: "Proyectos rechazados por tutor o administrador",
+      cantidad: contadores.rechazado,
       porcentaje:
         totalProyectos > 0
-          ? parseFloat(
-              ((contadores.aprobadoAdministrador / totalProyectos) * 100).toFixed(1)
-            )
-          : 0,
-    },
-    {
-      estado: "aprobado_para_exponer_en_feria",
-      descripcion: "Proyectos aprobados para exponer en feria",
-      cantidad: contadores.aprobadoParaExponerEnFeria,
-      porcentaje:
-        totalProyectos > 0
-          ? parseFloat(
-              ((contadores.aprobadoParaExponerEnFeria / totalProyectos) * 100).toFixed(1)
-            )
+          ? parseFloat(((contadores.rechazado / totalProyectos) * 100).toFixed(1))
           : 0,
     },
     {
@@ -1039,7 +1017,7 @@ const getCargaDesempenoJurados = async (filtros = {}) => {
         },
         proyectosAsignados: new Set(),
         proyectosCalificados: new Set(),
-        calificaciones: [],
+        calificacionesPorProyecto: new Map(), // Cambio: agrupar por proyecto
         fechasCalificacion: [],
       });
     }
@@ -1057,17 +1035,32 @@ const getCargaDesempenoJurados = async (filtros = {}) => {
       entry.proyectosCalificados.add(dp.idProyecto);
     }
 
-    // Agregar calificaciones
-    if (dp.calificaciones) {
-      dp.calificaciones.forEach((cal) => {
-        if (cal.calificado) {
-          entry.calificaciones.push(cal.puntajeObtenido);
-          entry.fechasCalificacion.push({
-            fechaCreacion: dp.fechaCreacion,
-            fechaCalificacion: cal.fechaActualizacion,
-          });
-        }
-      });
+    // Agregar calificaciones agrupadas por proyecto
+    if (dp.calificaciones && dp.calificaciones.length > 0) {
+      const calificacionesCalificadas = dp.calificaciones.filter(
+        (cal) => cal.calificado
+      );
+
+      if (calificacionesCalificadas.length > 0) {
+        // Sumar todas las subcalificaciones del proyecto
+        const totalProyecto = calificacionesCalificadas.reduce(
+          (sum, cal) => sum + cal.puntajeObtenido,
+          0
+        );
+
+        entry.calificacionesPorProyecto.set(dp.idProyecto, totalProyecto);
+
+        // Guardar fecha de calificación (usar la más reciente)
+        const fechaMasReciente = calificacionesCalificadas.reduce((latest, cal) => {
+          const calDate = new Date(cal.fechaActualizacion);
+          return calDate > latest ? calDate : latest;
+        }, new Date(0));
+
+        entry.fechasCalificacion.push({
+          fechaCreacion: dp.fechaCreacion,
+          fechaCalificacion: fechaMasReciente,
+        });
+      }
     }
   });
 
@@ -1077,12 +1070,16 @@ const getCargaDesempenoJurados = async (filtros = {}) => {
     const proyectosCalificados = entry.proyectosCalificados.size;
     const proyectosPendientes = proyectosAsignados - proyectosCalificados;
 
+    // Calcular promedio de calificaciones por proyecto
+    const calificacionesProyectos = Array.from(
+      entry.calificacionesPorProyecto.values()
+    );
     const promedioCalificacion =
-      entry.calificaciones.length > 0
+      calificacionesProyectos.length > 0
         ? parseFloat(
             (
-              entry.calificaciones.reduce((a, b) => a + b, 0) /
-              entry.calificaciones.length
+              calificacionesProyectos.reduce((a, b) => a + b, 0) /
+              calificacionesProyectos.length
             ).toFixed(1)
           )
         : 0;
@@ -1122,7 +1119,7 @@ const getCargaDesempenoJurados = async (filtros = {}) => {
       desempeno: {
         promedioCalificacionOtorgada: promedioCalificacion,
         tiempoPromedioCalificacion: tiempoPromedio,
-        calificacionesRealizadas: entry.calificaciones.length,
+        calificacionesRealizadas: calificacionesProyectos.length,
       },
     };
   });
@@ -1181,54 +1178,48 @@ const getCargaDesempenoJurados = async (filtros = {}) => {
  * Gráfico 4: Calificaciones de la Feria
  */
 const getCalificacionesFeria = async (filtros = {}) => {
-  const { queryOptions, feriaActual } = await buildProyectosFeriaQuery(
-    filtros
-  );
+  const { proyectos, feriaActual } = await getProyectosFeriaActual(filtros);
 
-  // Obtener proyectos con calificaciones
-  const proyectos = await Proyecto.findAll({
-    ...queryOptions,
-    include: [
-      ...queryOptions.include,
-      {
-        model: DocenteProyecto,
-        as: "docentesProyecto",
-        include: [
-          {
-            model: Calificacion,
-            as: "calificaciones",
-            where: { calificado: true },
-            required: false,
-            include: [
-              {
-                model: SubCalificacion,
-                as: "subCalificacion",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  });
-
-  // Calcular calificación promedio por proyecto
+  // Obtener calificaciones para cada proyecto
   const proyectosConCalificacion = [];
-  const todasCalificaciones = [];
+  const todasCalificacionesProyecto = []; // Calificaciones totales por proyecto
   const calificacionesPorCriterio = new Map();
 
-  proyectos.forEach((proyecto) => {
-    if (!proyecto.docentesProyecto || proyecto.docentesProyecto.length === 0)
-      return;
+  for (const proyecto of proyectos) {
+    const docentesProyecto = await DocenteProyecto.findAll({
+      where: { idProyecto: proyecto.idProyecto },
+      include: [
+        {
+          model: Calificacion,
+          as: "calificaciones",
+          where: { calificado: true },
+          required: false,
+          include: [
+            {
+              model: SubCalificacion,
+              as: "subCalificacion",
+            },
+          ],
+        },
+      ],
+    });
 
-    const calificacionesProyecto = [];
+    if (!docentesProyecto || docentesProyecto.length === 0) continue;
 
-    proyecto.docentesProyecto.forEach((dp) => {
+    // Calcular calificación total por jurado (suma de subcalificaciones)
+    const calificacionesPorJurado = [];
+
+    docentesProyecto.forEach((dp) => {
       if (dp.calificaciones && dp.calificaciones.length > 0) {
-        dp.calificaciones.forEach((cal) => {
-          calificacionesProyecto.push(cal.puntajeObtenido);
-          todasCalificaciones.push(cal.puntajeObtenido);
+        // Sumar todas las subcalificaciones de este jurado para este proyecto
+        const totalJurado = dp.calificaciones.reduce(
+          (sum, cal) => sum + cal.puntajeObtenido,
+          0
+        );
+        calificacionesPorJurado.push(totalJurado);
 
-          // Agrupar por criterio
+        // Agrupar por criterio (para estadísticas por subcalificación)
+        dp.calificaciones.forEach((cal) => {
           const criterio = cal.subCalificacion;
           if (criterio) {
             if (!calificacionesPorCriterio.has(criterio.idSubCalificacion)) {
@@ -1249,10 +1240,11 @@ const getCalificacionesFeria = async (filtros = {}) => {
       }
     });
 
-    if (calificacionesProyecto.length > 0) {
-      const promedio =
-        calificacionesProyecto.reduce((a, b) => a + b, 0) /
-        calificacionesProyecto.length;
+    if (calificacionesPorJurado.length > 0) {
+      // Promedio de las calificaciones de todos los jurados para este proyecto
+      const promedioProyecto =
+        calificacionesPorJurado.reduce((a, b) => a + b, 0) /
+        calificacionesPorJurado.length;
 
       proyectosConCalificacion.push({
         proyecto: {
@@ -1260,14 +1252,16 @@ const getCalificacionesFeria = async (filtros = {}) => {
           nombre: proyecto.nombre,
           descripcion: proyecto.descripcion,
         },
-        calificacionPromedio: parseFloat(promedio.toFixed(1)),
+        calificacionPromedio: parseFloat(promedioProyecto.toFixed(1)),
         area: proyecto.grupoMateria.materia.areaCategoria.area.nombre,
         categoria: proyecto.grupoMateria.materia.areaCategoria.categoria.nombre,
       });
-    }
-  });
 
-  // Distribución por rangos
+      todasCalificacionesProyecto.push(promedioProyecto);
+    }
+  }
+
+  // Distribución por rangos (basado en calificaciones de proyectos)
   const rangos = [
     { rango: "0-20", cantidad: 0 },
     { rango: "21-40", cantidad: 0 },
@@ -1276,7 +1270,7 @@ const getCalificacionesFeria = async (filtros = {}) => {
     { rango: "81-100", cantidad: 0 },
   ];
 
-  todasCalificaciones.forEach((cal) => {
+  todasCalificacionesProyecto.forEach((cal) => {
     if (cal <= 20) rangos[0].cantidad++;
     else if (cal <= 40) rangos[1].cantidad++;
     else if (cal <= 60) rangos[2].cantidad++;
@@ -1284,7 +1278,7 @@ const getCalificacionesFeria = async (filtros = {}) => {
     else rangos[4].cantidad++;
   });
 
-  const totalCalificaciones = todasCalificaciones.length;
+  const totalCalificaciones = todasCalificacionesProyecto.length;
   rangos.forEach((r) => {
     r.porcentaje =
       totalCalificaciones > 0
@@ -1294,33 +1288,33 @@ const getCalificacionesFeria = async (filtros = {}) => {
 
   // Estadísticas generales
   const promedioGeneral =
-    todasCalificaciones.length > 0
+    todasCalificacionesProyecto.length > 0
       ? parseFloat(
           (
-            todasCalificaciones.reduce((a, b) => a + b, 0) /
-            todasCalificaciones.length
+            todasCalificacionesProyecto.reduce((a, b) => a + b, 0) /
+            todasCalificacionesProyecto.length
           ).toFixed(1)
         )
       : 0;
 
-  const calificacionesOrdenadas = [...todasCalificaciones].sort((a, b) => a - b);
+  const calificacionesOrdenadas = [...todasCalificacionesProyecto].sort(
+    (a, b) => a - b
+  );
   const mediana =
     calificacionesOrdenadas.length > 0
-      ? calificacionesOrdenadas[
-          Math.floor(calificacionesOrdenadas.length / 2)
-        ]
+      ? calificacionesOrdenadas[Math.floor(calificacionesOrdenadas.length / 2)]
       : 0;
 
   const varianza =
-    todasCalificaciones.length > 0
-      ? todasCalificaciones.reduce(
+    todasCalificacionesProyecto.length > 0
+      ? todasCalificacionesProyecto.reduce(
           (sum, cal) => sum + Math.pow(cal - promedioGeneral, 2),
           0
-        ) / todasCalificaciones.length
+        ) / todasCalificacionesProyecto.length
       : 0;
   const desviacionEstandar = parseFloat(Math.sqrt(varianza).toFixed(1));
 
-  // Calificaciones por criterio
+  // Calificaciones por criterio (promedio de cada subcalificación)
   const porCriterio = Array.from(calificacionesPorCriterio.values()).map(
     (entry) => {
       const promedio =
