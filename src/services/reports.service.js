@@ -2430,6 +2430,336 @@ const getComparacionFeriasGlobal = async (filtros = {}) => {
 };
 
 // ============================================
+// REPORTES GLOBALES - RENDIMIENTO ACADÉMICO
+// ============================================
+
+/**
+ * Obtener promedio general por feria (rendimiento académico)
+ */
+const getPromediosPorFeriaGlobal = async (filtros = {}) => {
+  try {
+    const whereFeria = aplicarFiltrosGlobales(filtros);
+    whereFeria.estado = {
+      [Op.in]: ['Activo', 'Finalizado']
+    };
+
+    // Obtener ferias ordenadas cronológicamente
+    const ferias = await Feria.findAll({
+      where: whereFeria,
+      order: [['año', 'ASC'], ['semestre', 'ASC']],
+      attributes: ['idFeria', 'nombre', 'semestre', 'año']
+    });
+
+    const series = [];
+    let promedioAnterior = null;
+    const todosPromedios = [];
+
+    for (const feria of ferias) {
+      // Obtener todas las calificaciones de proyectos de esta feria
+      const calificaciones = await sequelize.query(`
+        SELECT c."puntajeObtenido"
+        FROM "Calificacion" c
+        INNER JOIN "DocenteProyecto" dp ON dp."idDocenteProyecto" = c."idDocenteProyecto"
+        INNER JOIN "Proyecto" p ON p."idProyecto" = dp."idProyecto"
+        INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+        INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+        ${filtros.areaId || filtros.categoriaId ? `
+        INNER JOIN "GrupoMateria" gm ON gm."idGrupoMateria" = p."idGrupoMateria"
+        INNER JOIN "Materia" m ON m."idMateria" = gm."idMateria"
+        INNER JOIN "AreaCategoria" ac ON ac."idAreaCategoria" = m."idAreaCategoria"
+        ` : ''}
+        WHERE t."idFeria" = :idFeria
+        AND c."calificado" = true
+        ${filtros.areaId ? 'AND ac."idArea" = :idArea' : ''}
+        ${filtros.categoriaId ? 'AND ac."idCategoria" = :idCategoria' : ''}
+      `, {
+        replacements: {
+          idFeria: feria.idFeria,
+          ...(filtros.areaId && { idArea: filtros.areaId }),
+          ...(filtros.categoriaId && { idCategoria: filtros.categoriaId })
+        },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      const puntajes = calificaciones.map(c => parseFloat(c.puntajeObtenido));
+      
+      if (puntajes.length === 0) {
+        series.push({
+          feria: {
+            idFeria: feria.idFeria,
+            nombre: feria.nombre,
+            semestre: feria.semestre,
+            año: feria.año
+          },
+          estadisticas: {
+            promedioGeneral: 0,
+            mediana: 0,
+            desviacionEstandar: 0,
+            calificacionMaxima: 0,
+            calificacionMinima: 0,
+            totalProyectosCalificados: 0
+          },
+          distribucionPorRango: [
+            { rango: "0-60", cantidad: 0, porcentaje: 0 },
+            { rango: "61-80", cantidad: 0, porcentaje: 0 },
+            { rango: "81-100", cantidad: 0, porcentaje: 0 }
+          ],
+          variacion: null
+        });
+        continue;
+      }
+
+      // Calcular estadísticas
+      const promedioGeneral = parseFloat((puntajes.reduce((a, b) => a + b, 0) / puntajes.length).toFixed(2));
+      const puntajesOrdenados = [...puntajes].sort((a, b) => a - b);
+      const mediana = puntajesOrdenados.length % 2 === 0
+        ? (puntajesOrdenados[puntajesOrdenados.length / 2 - 1] + puntajesOrdenados[puntajesOrdenados.length / 2]) / 2
+        : puntajesOrdenados[Math.floor(puntajesOrdenados.length / 2)];
+      
+      const varianza = puntajes.reduce((sum, val) => sum + Math.pow(val - promedioGeneral, 2), 0) / puntajes.length;
+      const desviacionEstandar = parseFloat(Math.sqrt(varianza).toFixed(2));
+
+      // Distribución por rangos
+      const rango0_60 = puntajes.filter(p => p <= 60).length;
+      const rango61_80 = puntajes.filter(p => p > 60 && p <= 80).length;
+      const rango81_100 = puntajes.filter(p => p > 80).length;
+
+      const distribucionPorRango = [
+        { rango: "0-60", cantidad: rango0_60, porcentaje: parseFloat(((rango0_60 / puntajes.length) * 100).toFixed(1)) },
+        { rango: "61-80", cantidad: rango61_80, porcentaje: parseFloat(((rango61_80 / puntajes.length) * 100).toFixed(1)) },
+        { rango: "81-100", cantidad: rango81_100, porcentaje: parseFloat(((rango81_100 / puntajes.length) * 100).toFixed(1)) }
+      ];
+
+      // Variación respecto a feria anterior
+      const variacion = promedioAnterior !== null
+        ? calcularCrecimiento(promedioGeneral, promedioAnterior)
+        : null;
+
+      series.push({
+        feria: {
+          idFeria: feria.idFeria,
+          nombre: feria.nombre,
+          semestre: feria.semestre,
+          año: feria.año
+        },
+        estadisticas: {
+          promedioGeneral,
+          mediana: parseFloat(mediana.toFixed(2)),
+          desviacionEstandar,
+          calificacionMaxima: parseFloat(Math.max(...puntajes).toFixed(2)),
+          calificacionMinima: parseFloat(Math.min(...puntajes).toFixed(2)),
+          totalProyectosCalificados: puntajes.length
+        },
+        distribucionPorRango,
+        variacion
+      });
+
+      todosPromedios.push(promedioGeneral);
+      promedioAnterior = promedioGeneral;
+    }
+
+    // Calcular tendencia general
+    const promedioHistorico = todosPromedios.length > 0
+      ? parseFloat((todosPromedios.reduce((a, b) => a + b, 0) / todosPromedios.length).toFixed(2))
+      : 0;
+
+    let tasaCrecimientoPromedio = 0;
+    if (todosPromedios.length > 1) {
+      const tasas = [];
+      for (let i = 1; i < todosPromedios.length; i++) {
+        if (todosPromedios[i - 1] > 0) {
+          tasas.push(((todosPromedios[i] - todosPromedios[i - 1]) / todosPromedios[i - 1]) * 100);
+        }
+      }
+      tasaCrecimientoPromedio = tasas.length > 0
+        ? parseFloat((tasas.reduce((a, b) => a + b, 0) / tasas.length).toFixed(2))
+        : 0;
+    }
+
+    return {
+      series,
+      tendenciaGeneral: {
+        direccion: determinarTendencia(tasaCrecimientoPromedio),
+        tasaCrecimientoPromedio,
+        promedioHistorico
+      },
+      filtros: {
+        fechaInicio: filtros.fechaInicio || null,
+        fechaFin: filtros.fechaFin || null,
+        ferias: filtros.ferias || [],
+        areaId: filtros.areaId || null,
+        categoriaId: filtros.categoriaId || null
+      },
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error en getPromediosPorFeriaGlobal:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtener ranking de áreas por rendimiento académico
+ */
+const getRankingAreasRendimientoGlobal = async (filtros = {}) => {
+  try {
+    const whereFeria = aplicarFiltrosGlobales(filtros);
+    whereFeria.estado = {
+      [Op.in]: ['Activo', 'Finalizado']
+    };
+
+    const limit = filtros.limit || 10;
+    const orderBy = filtros.orderBy || 'promedio';
+
+    // Obtener estadísticas por área
+    const areasData = await sequelize.query(`
+      SELECT 
+        a."idArea",
+        a."nombre" as "nombreArea",
+        AVG(c."puntajeObtenido") as "promedioHistorico",
+        STDDEV(c."puntajeObtenido") as "desviacionEstandar",
+        COUNT(DISTINCT p."idProyecto") as "totalProyectos",
+        COUNT(DISTINCT f."idFeria") as "totalFerias"
+      FROM "Area" a
+      INNER JOIN "AreaCategoria" ac ON ac."idArea" = a."idArea"
+      INNER JOIN "Materia" m ON m."idAreaCategoria" = ac."idAreaCategoria"
+      INNER JOIN "GrupoMateria" gm ON gm."idMateria" = m."idMateria"
+      INNER JOIN "Proyecto" p ON p."idGrupoMateria" = gm."idGrupoMateria"
+      INNER JOIN "DocenteProyecto" dp ON dp."idProyecto" = p."idProyecto"
+      INNER JOIN "Calificacion" c ON c."idDocenteProyecto" = dp."idDocenteProyecto"
+      INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+      INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+      INNER JOIN "Feria" f ON f."idFeria" = t."idFeria"
+      WHERE f."estado" IN ('Activo', 'Finalizado')
+      AND c."calificado" = true
+      ${filtros.fechaInicio || filtros.fechaFin ? 'AND f."año" >= :añoInicio AND f."año" <= :añoFin' : ''}
+      ${filtros.ferias && filtros.ferias.length > 0 ? 'AND f."idFeria" IN (:ferias)' : ''}
+      GROUP BY a."idArea", a."nombre"
+      HAVING COUNT(DISTINCT p."idProyecto") > 0
+      ORDER BY ${orderBy === 'consistencia' ? '"desviacionEstandar" ASC' : '"promedioHistorico" DESC'}
+      LIMIT :limit
+    `, {
+      replacements: {
+        limit,
+        ...(filtros.fechaInicio && { añoInicio: new Date(filtros.fechaInicio).getFullYear() }),
+        ...(filtros.fechaFin && { añoFin: new Date(filtros.fechaFin).getFullYear() }),
+        ...(filtros.ferias && filtros.ferias.length > 0 && { ferias: filtros.ferias })
+      },
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    // Obtener evolución por feria para cada área
+    const ranking = await Promise.all(areasData.map(async (area, index) => {
+      const evolucion = await sequelize.query(`
+        SELECT 
+          f."nombre" as "nombreFeria",
+          AVG(c."puntajeObtenido") as promedio
+        FROM "Feria" f
+        INNER JOIN "Tarea" t ON t."idFeria" = f."idFeria"
+        INNER JOIN "Revision" r ON r."idTarea" = t."idTarea"
+        INNER JOIN "Proyecto" p ON p."idProyecto" = r."idProyecto"
+        INNER JOIN "GrupoMateria" gm ON gm."idGrupoMateria" = p."idGrupoMateria"
+        INNER JOIN "Materia" m ON m."idMateria" = gm."idMateria"
+        INNER JOIN "AreaCategoria" ac ON ac."idAreaCategoria" = m."idAreaCategoria"
+        INNER JOIN "DocenteProyecto" dp ON dp."idProyecto" = p."idProyecto"
+        INNER JOIN "Calificacion" c ON c."idDocenteProyecto" = dp."idDocenteProyecto"
+        WHERE ac."idArea" = :idArea
+        AND f."estado" IN ('Activo', 'Finalizado')
+        AND c."calificado" = true
+        GROUP BY f."idFeria", f."nombre", f."año", f."semestre"
+        ORDER BY f."año" ASC, f."semestre" ASC
+      `, {
+        replacements: { idArea: area.idArea },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      // Calcular mediana
+      const promedios = evolucion.map(e => parseFloat(e.promedio));
+      const promediosOrdenados = [...promedios].sort((a, b) => a - b);
+      const mediana = promediosOrdenados.length > 0
+        ? (promediosOrdenados.length % 2 === 0
+          ? (promediosOrdenados[promediosOrdenados.length / 2 - 1] + promediosOrdenados[promediosOrdenados.length / 2]) / 2
+          : promediosOrdenados[Math.floor(promediosOrdenados.length / 2)])
+        : 0;
+
+      // Calcular tendencia
+      let variacionPromedio = 0;
+      if (promedios.length > 1) {
+        const variaciones = [];
+        for (let i = 1; i < promedios.length; i++) {
+          if (promedios[i - 1] > 0) {
+            variaciones.push(((promedios[i] - promedios[i - 1]) / promedios[i - 1]) * 100);
+          }
+        }
+        variacionPromedio = variaciones.length > 0
+          ? parseFloat((variaciones.reduce((a, b) => a + b, 0) / variaciones.length).toFixed(2))
+          : 0;
+      }
+
+      return {
+        posicion: index + 1,
+        area: {
+          idArea: area.idArea,
+          nombre: area.nombreArea
+        },
+        estadisticas: {
+          promedioHistorico: parseFloat(area.promedioHistorico).toFixed(2),
+          mediana: parseFloat(mediana.toFixed(2)),
+          desviacionEstandar: parseFloat(area.desviacionEstandar || 0).toFixed(2),
+          totalProyectos: parseInt(area.totalProyectos),
+          totalFerias: parseInt(area.totalFerias)
+        },
+        evolucion: evolucion.map(e => ({
+          feria: e.nombreFeria,
+          promedio: parseFloat(e.promedio).toFixed(2)
+        })),
+        tendencia: {
+          direccion: determinarTendencia(variacionPromedio),
+          variacionPromedio
+        }
+      };
+    }));
+
+    // Estadísticas generales
+    const promedioGeneral = areasData.length > 0
+      ? parseFloat((areasData.reduce((sum, a) => sum + parseFloat(a.promedioHistorico), 0) / areasData.length).toFixed(2))
+      : 0;
+
+    const areaMejorRendimiento = ranking.length > 0 ? ranking[0] : null;
+    const areaMasConsistente = [...ranking].sort((a, b) => 
+      parseFloat(a.estadisticas.desviacionEstandar) - parseFloat(b.estadisticas.desviacionEstandar)
+    )[0] || null;
+
+    return {
+      ranking,
+      estadisticasGenerales: {
+        totalAreas: ranking.length,
+        promedioGeneral,
+        areaMejorRendimiento: areaMejorRendimiento ? {
+          nombre: areaMejorRendimiento.area.nombre,
+          promedio: areaMejorRendimiento.estadisticas.promedioHistorico
+        } : null,
+        areaMasConsistente: areaMasConsistente ? {
+          nombre: areaMasConsistente.area.nombre,
+          desviacionEstandar: areaMasConsistente.estadisticas.desviacionEstandar
+        } : null
+      },
+      filtros: {
+        fechaInicio: filtros.fechaInicio || null,
+        fechaFin: filtros.fechaFin || null,
+        ferias: filtros.ferias || [],
+        limit,
+        orderBy
+      },
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error en getRankingAreasRendimientoGlobal:', error);
+    throw error;
+  }
+};
+
+// ============================================
 // EXPORTAR MÓDULO
 // ============================================
 
@@ -2473,6 +2803,10 @@ module.exports = {
   getAreasFrecuentesGlobal,
   getCategoriasFrecuentesGlobal,
   getComparacionFeriasGlobal,
+
+  // Rendimiento Académico Global
+  getPromediosPorFeriaGlobal,
+  getRankingAreasRendimientoGlobal,
 };
 
 

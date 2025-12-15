@@ -133,4 +133,20 @@ router.get(
   reportsController.getComparacionFeriasGlobal
 );
 
+// ============================================
+// REPORTES GLOBALES - RENDIMIENTO ACADÉMICO
+// ============================================
+
+// Rendimiento 1: Promedio general por feria
+router.get(
+  "/global/rendimiento/promedio-por-feria",
+  reportsController.getPromediosPorFeriaGlobal
+);
+
+// Rendimiento 2: Ranking de áreas por rendimiento
+router.get(
+  "/global/rendimiento/ranking-areas",
+  reportsController.getRankingAreasRendimientoGlobal
+);
+
 module.exports = router;

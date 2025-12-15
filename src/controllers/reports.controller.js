@@ -794,3 +794,98 @@ module.exports = {
   getComparacionFeriasGlobal,
 };
 
+// ============================================
+// CONTROLADORES DE RENDIMIENTO ACADÉMICO GLOBAL
+// ============================================
+
+/**
+ * Promedio general por feria
+ */
+const getPromediosPorFeriaGlobal = async (req, res) => {
+  try {
+    const filtros = {
+      fechaInicio: req.query.fechaInicio,
+      fechaFin: req.query.fechaFin,
+      ferias: req.query.ferias ? req.query.ferias.split(',') : null,
+      areaId: req.query.areaId,
+      categoriaId: req.query.categoriaId,
+    };
+
+    const data = await reportsService.getPromediosPorFeriaGlobal(filtros);
+
+    return res.success("Promedio general por feria obtenido exitosamente", data);
+  } catch (err) {
+    console.error("Error al obtener promedio por feria:", err);
+    return res.error("Error al obtener promedio por feria", 500, {
+      code: "INTERNAL_ERROR",
+      details: err.message,
+    });
+  }
+};
+
+/**
+ * Ranking de áreas por rendimiento
+ */
+const getRankingAreasRendimientoGlobal = async (req, res) => {
+  try {
+    const filtros = {
+      fechaInicio: req.query.fechaInicio,
+      fechaFin: req.query.fechaFin,
+      ferias: req.query.ferias ? req.query.ferias.split(',') : null,
+      limit: req.query.limit ? parseInt(req.query.limit) : 10,
+      orderBy: req.query.orderBy || 'promedio',
+    };
+
+    const data = await reportsService.getRankingAreasRendimientoGlobal(filtros);
+
+    return res.success("Ranking de áreas por rendimiento obtenido exitosamente", data);
+  } catch (err) {
+    console.error("Error al obtener ranking de áreas:", err);
+    return res.error("Error al obtener ranking de áreas", 500, {
+      code: "INTERNAL_ERROR",
+      details: err.message,
+    });
+  }
+};
+
+module.exports = {
+  // KPIs Feria Actual
+  getProyectosInscritos,
+  getEstudiantesParticipantes,
+  getTutores,
+  getJurados,
+  getEventosRealizados,
+  getPorcentajeAprobadosTutor,
+  getPorcentajeAprobadosAdmin,
+  getPorcentajeAprobadosExposicion,
+
+  // Gráficos Feria Actual
+  getProyectosPorEstado,
+  getParticipacionAreaCategoria,
+  getCargaDesempenoJurados,
+  getCalificacionesFeria,
+  getParticipacionEventos,
+
+  // Auxiliar
+  getFeriaActualInfo,
+
+  // ============================================
+  // REPORTES GLOBALES
+  // ============================================
+  
+  // KPIs Globales
+  getProyectosPorFeriaGlobal,
+  getEstudiantesPorFeriaGlobal,
+  getJuradosPorFeriaGlobal,
+  getTutoresPorFeriaGlobal,
+
+  // Tendencias Globales
+  getAreasFrecuentesGlobal,
+  getCategoriasFrecuentesGlobal,
+  getComparacionFeriasGlobal,
+
+  // Rendimiento Académico Global
+  getPromediosPorFeriaGlobal,
+  getRankingAreasRendimientoGlobal,
+};
+
