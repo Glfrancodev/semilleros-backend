@@ -34,13 +34,6 @@ const getFeriaActual = async () => {
   const feria = await Feria.findOne({
     where: { estado: "Activo" },
     order: [["fechaCreacion", "DESC"]],
-    include: [
-      {
-        model: SubCalificacion,
-        as: "tipoCalificacion",
-        attributes: ["idTipoCalificacion", "nombre"],
-      },
-    ],
   });
 
   if (!feria) {
@@ -186,6 +179,79 @@ const formatFeriaInfo = (feria) => {
   };
 };
 
+/**
+ * Función auxiliar: Obtener proyectos de la feria actual con filtros
+ * Retorna los proyectos completos para poder acceder a sus propiedades
+ */
+const getProyectosFeriaActual = async (filtros = {}) => {
+  const feriaActual = await getFeriaActual();
+  const tarea0 = await getTarea0(feriaActual.idFeria);
+
+  const revisiones = await Revision.findAll({
+    where: { idTarea: tarea0.idTarea },
+    attributes: ["idProyecto"],
+    include: [
+      {
+        model: Proyecto,
+        as: "proyecto",
+        required: true,
+        include: [
+          {
+            model: GrupoMateria,
+            as: "grupoMateria",
+            required: true,
+            where: filtros.grupoMateriaId
+              ? { idGrupoMateria: filtros.grupoMateriaId }
+              : {},
+            include: [
+              {
+                model: Materia,
+                as: "materia",
+                required: true,
+                where: filtros.materiaId ? { idMateria: filtros.materiaId } : {},
+                include: [
+                  {
+                    model: AreaCategoria,
+                    as: "areaCategoria",
+                    required: true,
+                    where: {
+                      ...(filtros.areaId ? { idArea: filtros.areaId } : {}),
+                      ...(filtros.categoriaId
+                        ? { idCategoria: filtros.categoriaId }
+                        : {}),
+                    },
+                  },
+                  {
+                    model: Semestre,
+                    as: "semestre",
+                    required: filtros.semestreId ? true : false,
+                    where: filtros.semestreId
+                      ? { idSemestre: filtros.semestreId }
+                      : {},
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+
+  // Retornar proyectos únicos
+  const proyectosMap = new Map();
+  revisiones.forEach((r) => {
+    if (r.proyecto && !proyectosMap.has(r.proyecto.idProyecto)) {
+      proyectosMap.set(r.proyecto.idProyecto, r.proyecto);
+    }
+  });
+
+  return {
+    proyectos: Array.from(proyectosMap.values()),
+    feriaActual,
+  };
+};
+
 // ============================================
 // ENDPOINTS DE KPIs
 // ============================================
@@ -194,11 +260,63 @@ const formatFeriaInfo = (feria) => {
  * KPI 1: Total de proyectos inscritos
  */
 const getProyectosInscritos = async (filtros = {}) => {
-  const { queryOptions, feriaActual } = await buildProyectosFeriaQuery(
-    filtros
-  );
+  const feriaActual = await getFeriaActual();
+  const tarea0 = await getTarea0(feriaActual.idFeria);
 
-  const total = await Proyecto.count(queryOptions);
+  // Obtener proyectos únicos que tienen revisión de la tarea 0
+  const revisiones = await Revision.findAll({
+    where: { idTarea: tarea0.idTarea },
+    include: [
+      {
+        model: Proyecto,
+        as: "proyecto",
+        required: true,
+        include: [
+          {
+            model: GrupoMateria,
+            as: "grupoMateria",
+            required: true,
+            where: filtros.grupoMateriaId
+              ? { idGrupoMateria: filtros.grupoMateriaId }
+              : {},
+            include: [
+              {
+                model: Materia,
+                as: "materia",
+                required: true,
+                where: filtros.materiaId ? { idMateria: filtros.materiaId } : {},
+                include: [
+                  {
+                    model: AreaCategoria,
+                    as: "areaCategoria",
+                    required: true,
+                    where: {
+                      ...(filtros.areaId ? { idArea: filtros.areaId } : {}),
+                      ...(filtros.categoriaId
+                        ? { idCategoria: filtros.categoriaId }
+                        : {}),
+                    },
+                  },
+                  {
+                    model: Semestre,
+                    as: "semestre",
+                    required: filtros.semestreId ? true : false,
+                    where: filtros.semestreId
+                      ? { idSemestre: filtros.semestreId }
+                      : {},
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+
+  // Contar proyectos únicos
+  const proyectosUnicos = new Set(revisiones.map((r) => r.idProyecto));
+  const total = proyectosUnicos.size;
 
   return {
     total,
@@ -211,13 +329,63 @@ const getProyectosInscritos = async (filtros = {}) => {
  * KPI 2: Total de estudiantes participantes
  */
 const getEstudiantesParticipantes = async (filtros = {}) => {
-  const { queryOptions, feriaActual } = await buildProyectosFeriaQuery(
-    filtros
-  );
+  const feriaActual = await getFeriaActual();
+  const tarea0 = await getTarea0(feriaActual.idFeria);
 
-  // Obtener proyectos de la feria
-  const proyectos = await Proyecto.findAll(queryOptions);
-  const idsProyectos = proyectos.map((p) => p.idProyecto);
+  // Obtener proyectos únicos que tienen revisión de la tarea 0
+  const revisiones = await Revision.findAll({
+    where: { idTarea: tarea0.idTarea },
+    attributes: ["idProyecto"],
+    include: [
+      {
+        model: Proyecto,
+        as: "proyecto",
+        required: true,
+        include: [
+          {
+            model: GrupoMateria,
+            as: "grupoMateria",
+            required: true,
+            where: filtros.grupoMateriaId
+              ? { idGrupoMateria: filtros.grupoMateriaId }
+              : {},
+            include: [
+              {
+                model: Materia,
+                as: "materia",
+                required: true,
+                where: filtros.materiaId ? { idMateria: filtros.materiaId } : {},
+                include: [
+                  {
+                    model: AreaCategoria,
+                    as: "areaCategoria",
+                    required: true,
+                    where: {
+                      ...(filtros.areaId ? { idArea: filtros.areaId } : {}),
+                      ...(filtros.categoriaId
+                        ? { idCategoria: filtros.categoriaId }
+                        : {}),
+                    },
+                  },
+                  {
+                    model: Semestre,
+                    as: "semestre",
+                    required: filtros.semestreId ? true : false,
+                    where: filtros.semestreId
+                      ? { idSemestre: filtros.semestreId }
+                      : {},
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+
+  // Obtener IDs únicos de proyectos
+  const idsProyectos = [...new Set(revisiones.map((r) => r.idProyecto))];
 
   // Contar estudiantes únicos en esos proyectos
   const totalUnicos = await EstudianteProyecto.count({
@@ -239,18 +407,67 @@ const getEstudiantesParticipantes = async (filtros = {}) => {
  * Los tutores son los docentes del GrupoMateria de cada proyecto
  */
 const getTutores = async (filtros = {}) => {
-  const { queryOptions, feriaActual } = await buildProyectosFeriaQuery(
-    filtros
-  );
+  const feriaActual = await getFeriaActual();
+  const tarea0 = await getTarea0(feriaActual.idFeria);
 
   // Obtener proyectos con sus grupos
-  const proyectos = await Proyecto.findAll(queryOptions);
+  const revisiones = await Revision.findAll({
+    where: { idTarea: tarea0.idTarea },
+    attributes: ["idProyecto"],
+    include: [
+      {
+        model: Proyecto,
+        as: "proyecto",
+        required: true,
+        include: [
+          {
+            model: GrupoMateria,
+            as: "grupoMateria",
+            required: true,
+            attributes: ["idDocente"],
+            where: filtros.grupoMateriaId
+              ? { idGrupoMateria: filtros.grupoMateriaId }
+              : {},
+            include: [
+              {
+                model: Materia,
+                as: "materia",
+                required: true,
+                where: filtros.materiaId ? { idMateria: filtros.materiaId } : {},
+                include: [
+                  {
+                    model: AreaCategoria,
+                    as: "areaCategoria",
+                    required: true,
+                    where: {
+                      ...(filtros.areaId ? { idArea: filtros.areaId } : {}),
+                      ...(filtros.categoriaId
+                        ? { idCategoria: filtros.categoriaId }
+                        : {}),
+                    },
+                  },
+                  {
+                    model: Semestre,
+                    as: "semestre",
+                    required: filtros.semestreId ? true : false,
+                    where: filtros.semestreId
+                      ? { idSemestre: filtros.semestreId }
+                      : {},
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
 
   // Extraer IDs únicos de docentes (tutores)
   const idsDocentes = [
     ...new Set(
-      proyectos
-        .map((p) => p.grupoMateria?.idDocente)
+      revisiones
+        .map((r) => r.proyecto?.grupoMateria?.idDocente)
         .filter((id) => id !== null && id !== undefined)
     ),
   ];
@@ -270,13 +487,62 @@ const getTutores = async (filtros = {}) => {
  * Los jurados son los docentes en DocenteProyecto
  */
 const getJurados = async (filtros = {}) => {
-  const { queryOptions, feriaActual } = await buildProyectosFeriaQuery(
-    filtros
-  );
+  const feriaActual = await getFeriaActual();
+  const tarea0 = await getTarea0(feriaActual.idFeria);
 
   // Obtener proyectos de la feria
-  const proyectos = await Proyecto.findAll(queryOptions);
-  const idsProyectos = proyectos.map((p) => p.idProyecto);
+  const revisiones = await Revision.findAll({
+    where: { idTarea: tarea0.idTarea },
+    attributes: ["idProyecto"],
+    include: [
+      {
+        model: Proyecto,
+        as: "proyecto",
+        required: true,
+        include: [
+          {
+            model: GrupoMateria,
+            as: "grupoMateria",
+            required: true,
+            where: filtros.grupoMateriaId
+              ? { idGrupoMateria: filtros.grupoMateriaId }
+              : {},
+            include: [
+              {
+                model: Materia,
+                as: "materia",
+                required: true,
+                where: filtros.materiaId ? { idMateria: filtros.materiaId } : {},
+                include: [
+                  {
+                    model: AreaCategoria,
+                    as: "areaCategoria",
+                    required: true,
+                    where: {
+                      ...(filtros.areaId ? { idArea: filtros.areaId } : {}),
+                      ...(filtros.categoriaId
+                        ? { idCategoria: filtros.categoriaId }
+                        : {}),
+                    },
+                  },
+                  {
+                    model: Semestre,
+                    as: "semestre",
+                    required: filtros.semestreId ? true : false,
+                    where: filtros.semestreId
+                      ? { idSemestre: filtros.semestreId }
+                      : {},
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+
+  const idsProyectos = [...new Set(revisiones.map((r) => r.idProyecto))];
 
   // Contar jurados únicos
   const totalUnicos = await DocenteProyecto.count({
@@ -285,7 +551,7 @@ const getJurados = async (filtros = {}) => {
     col: "idDocente",
   });
 
-  // Total de asignaciones (puede haber docentes asignados a múltiples proyectos)
+  // Total de asignaciones
   const total = await DocenteProyecto.count({
     where: { idProyecto: { [Op.in]: idsProyectos } },
   });
@@ -340,11 +606,7 @@ const getEventosRealizados = async (filtros = {}) => {
  * KPI 6: % de proyectos aprobados por tutor
  */
 const getPorcentajeAprobadosTutor = async (filtros = {}) => {
-  const { queryOptions, feriaActual } = await buildProyectosFeriaQuery(
-    filtros
-  );
-
-  const proyectos = await Proyecto.findAll(queryOptions);
+  const { proyectos, feriaActual } = await getProyectosFeriaActual(filtros);
   const totalProyectos = proyectos.length;
 
   const aprobadosPorTutor = proyectos.filter(
@@ -383,11 +645,7 @@ const getPorcentajeAprobadosTutor = async (filtros = {}) => {
  * KPI 7: % de proyectos aprobados por administrador
  */
 const getPorcentajeAprobadosAdmin = async (filtros = {}) => {
-  const { queryOptions, feriaActual } = await buildProyectosFeriaQuery(
-    filtros
-  );
-
-  const proyectos = await Proyecto.findAll(queryOptions);
+  const { proyectos, feriaActual } = await getProyectosFeriaActual(filtros);
   const totalProyectos = proyectos.length;
 
   const aprobadosPorAdmin = proyectos.filter(
@@ -426,11 +684,7 @@ const getPorcentajeAprobadosAdmin = async (filtros = {}) => {
  * KPI 8: % de proyectos aprobados para exposición en feria
  */
 const getPorcentajeAprobadosExposicion = async (filtros = {}) => {
-  const { queryOptions, feriaActual } = await buildProyectosFeriaQuery(
-    filtros
-  );
-
-  const proyectos = await Proyecto.findAll(queryOptions);
+  const { proyectos, feriaActual } = await getProyectosFeriaActual(filtros);
   const totalProyectos = proyectos.length;
 
   const aprobadosExposicion = proyectos.filter((p) => p.esFinal === true)
@@ -475,18 +729,6 @@ const getFeriaActualInfo = async () => {
   const feria = await Feria.findOne({
     where: { estado: "Activo" },
     order: [["fechaCreacion", "DESC"]],
-    include: [
-      {
-        model: SubCalificacion,
-        as: "tipoCalificacion",
-        attributes: ["idTipoCalificacion", "nombre"],
-      },
-      {
-        model: Semestre,
-        as: "semestres",
-        attributes: ["idSemestre", "numero"],
-      },
-    ],
   });
 
   if (!feria) {
@@ -501,8 +743,6 @@ const getFeriaActualInfo = async () => {
     estado: feria.estado,
     fechaCreacion: feria.fechaCreacion,
     fechaActualizacion: feria.fechaActualizacion,
-    tipoCalificacion: feria.tipoCalificacion,
-    semestres: feria.semestres,
   };
 };
 
@@ -514,102 +754,131 @@ const getFeriaActualInfo = async () => {
  * Gráfico 1: Proyectos por estado
  */
 const getProyectosPorEstado = async (filtros = {}) => {
-  const { queryOptions, feriaActual } = await buildProyectosFeriaQuery(
-    filtros
-  );
+  const { proyectos, feriaActual } = await getProyectosFeriaActual(filtros);
 
-  // Obtener todos los proyectos con sus relaciones
-  const proyectos = await Proyecto.findAll({
-    ...queryOptions,
-    include: [
-      ...queryOptions.include,
-      {
-        model: DocenteProyecto,
-        as: "docentesProyecto",
+  // Obtener jurados y calificaciones para cada proyecto
+  const proyectosConJurados = await Promise.all(
+    proyectos.map(async (p) => {
+      const jurados = await DocenteProyecto.findAll({
+        where: { idProyecto: p.idProyecto },
         include: [
           {
             model: Calificacion,
             as: "calificaciones",
           },
         ],
-      },
-    ],
+      });
+
+      return {
+        proyecto: p,
+        cantidadJurados: jurados.length,
+        juradosCalificados: jurados.filter((j) =>
+          j.calificaciones?.every((c) => c.calificado === true)
+        ).length,
+      };
+    })
+  );
+
+  const totalProyectos = proyectosConJurados.length;
+
+  // Clasificar cada proyecto en UN SOLO estado (con prioridad)
+  const contadores = {
+    calificado: 0,
+    conJurados: 0,
+    aprobadoParaExponerEnFeria: 0,
+    aprobadoAdministrador: 0,
+    aprobadoTutor: 0,
+    borrador: 0,
+  };
+
+  proyectosConJurados.forEach(({ proyecto: p, cantidadJurados, juradosCalificados }) => {
+    // Prioridad 1: Calificado (los 3 jurados calificaron)
+    if (cantidadJurados === 3 && juradosCalificados === 3) {
+      contadores.calificado++;
+    }
+    // Prioridad 2: Con Jurados (tiene 3 jurados asignados pero no todos calificaron)
+    else if (cantidadJurados === 3) {
+      contadores.conJurados++;
+    }
+    // Prioridad 3: Aprobado para Exponer en Feria
+    else if (
+      p.estaAprobadoTutor === true &&
+      p.estaAprobado === true &&
+      p.esFinal === true
+    ) {
+      contadores.aprobadoParaExponerEnFeria++;
+    }
+    // Prioridad 4: Aprobado por Administrador
+    else if (p.estaAprobado === true) {
+      contadores.aprobadoAdministrador++;
+    }
+    // Prioridad 5: Aprobado por Tutor
+    else if (p.estaAprobadoTutor === true) {
+      contadores.aprobadoTutor++;
+    }
+    // Prioridad 6: Borrador (aprobadoTutor y aprobadoAdministrador null o false)
+    else {
+      contadores.borrador++;
+    }
   });
-
-  const totalProyectos = proyectos.length;
-
-  // Contar por estados
-  const borrador = proyectos.filter(
-    (p) => p.estaAprobado === null && p.estaAprobadoTutor === null
-  ).length;
-
-  const enviado = proyectos.filter((p) => {
-    return p.revisiones.some((r) => r.revisado === false);
-  }).length;
-
-  const aprobadoTutor = proyectos.filter(
-    (p) => p.estaAprobadoTutor === true
-  ).length;
-
-  const conJurados = proyectos.filter(
-    (p) => p.docentesProyecto && p.docentesProyecto.length > 0
-  ).length;
-
-  const calificado = proyectos.filter((p) => {
-    if (!p.docentesProyecto || p.docentesProyecto.length === 0) return false;
-    return p.docentesProyecto.every((dp) => {
-      return (
-        dp.calificaciones &&
-        dp.calificaciones.length > 0 &&
-        dp.calificaciones.every((c) => c.calificado === true)
-      );
-    });
-  }).length;
 
   const estados = [
     {
       estado: "borrador",
       descripcion: "Proyectos en borrador (sin aprobaciones)",
-      cantidad: borrador,
+      cantidad: contadores.borrador,
       porcentaje:
         totalProyectos > 0
-          ? parseFloat(((borrador / totalProyectos) * 100).toFixed(1))
-          : 0,
-    },
-    {
-      estado: "enviado",
-      descripcion: "Proyectos enviados para revisión",
-      cantidad: enviado,
-      porcentaje:
-        totalProyectos > 0
-          ? parseFloat(((enviado / totalProyectos) * 100).toFixed(1))
+          ? parseFloat(((contadores.borrador / totalProyectos) * 100).toFixed(1))
           : 0,
     },
     {
       estado: "aprobado_tutor",
       descripcion: "Proyectos aprobados por tutor",
-      cantidad: aprobadoTutor,
+      cantidad: contadores.aprobadoTutor,
       porcentaje:
         totalProyectos > 0
-          ? parseFloat(((aprobadoTutor / totalProyectos) * 100).toFixed(1))
+          ? parseFloat(((contadores.aprobadoTutor / totalProyectos) * 100).toFixed(1))
+          : 0,
+    },
+    {
+      estado: "aprobado_administrador",
+      descripcion: "Proyectos aprobados por administrador",
+      cantidad: contadores.aprobadoAdministrador,
+      porcentaje:
+        totalProyectos > 0
+          ? parseFloat(
+              ((contadores.aprobadoAdministrador / totalProyectos) * 100).toFixed(1)
+            )
+          : 0,
+    },
+    {
+      estado: "aprobado_para_exponer_en_feria",
+      descripcion: "Proyectos aprobados para exponer en feria",
+      cantidad: contadores.aprobadoParaExponerEnFeria,
+      porcentaje:
+        totalProyectos > 0
+          ? parseFloat(
+              ((contadores.aprobadoParaExponerEnFeria / totalProyectos) * 100).toFixed(1)
+            )
           : 0,
     },
     {
       estado: "con_jurados",
-      descripcion: "Proyectos con jurados asignados",
-      cantidad: conJurados,
+      descripcion: "Proyectos con 3 jurados asignados",
+      cantidad: contadores.conJurados,
       porcentaje:
         totalProyectos > 0
-          ? parseFloat(((conJurados / totalProyectos) * 100).toFixed(1))
+          ? parseFloat(((contadores.conJurados / totalProyectos) * 100).toFixed(1))
           : 0,
     },
     {
       estado: "calificado",
-      descripcion: "Proyectos completamente calificados",
-      cantidad: calificado,
+      descripcion: "Proyectos calificados por los 3 jurados",
+      cantidad: contadores.calificado,
       porcentaje:
         totalProyectos > 0
-          ? parseFloat(((calificado / totalProyectos) * 100).toFixed(1))
+          ? parseFloat(((contadores.calificado / totalProyectos) * 100).toFixed(1))
           : 0,
     },
   ];
@@ -1126,36 +1395,9 @@ const getParticipacionEventos = async (filtros = {}) => {
             as: "estudiante",
             include: [
               {
-                model: EstudianteProyecto,
-                as: "estudiantesProyecto",
-                include: [
-                  {
-                    model: Proyecto,
-                    as: "proyecto",
-                    include: [
-                      {
-                        model: GrupoMateria,
-                        as: "grupoMateria",
-                        include: [
-                          {
-                            model: Materia,
-                            as: "materia",
-                            include: [
-                              {
-                                model: AreaCategoria,
-                                as: "areaCategoria",
-                                include: [
-                                  { model: Area, as: "area" },
-                                  { model: Categoria, as: "categoria" },
-                                ],
-                              },
-                            ],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                ],
+                model: Usuario,
+                as: "usuario",
+                attributes: ["nombre", "apellido"],
               },
             ],
           },
@@ -1177,57 +1419,6 @@ const getParticipacionEventos = async (filtros = {}) => {
           )
         : 0;
 
-    // Agrupar por área y categoría
-    const areaMap = new Map();
-    const categoriaMap = new Map();
-
-    if (evento.estudiantesEventos) {
-      evento.estudiantesEventos.forEach((ee) => {
-        const estudiante = ee.estudiante;
-        if (
-          estudiante &&
-          estudiante.estudiantesProyecto &&
-          estudiante.estudiantesProyecto.length > 0
-        ) {
-          const proyecto = estudiante.estudiantesProyecto[0].proyecto;
-          if (proyecto && proyecto.grupoMateria) {
-            const area =
-              proyecto.grupoMateria.materia.areaCategoria.area.nombre;
-            const categoria =
-              proyecto.grupoMateria.materia.areaCategoria.categoria.nombre;
-
-            areaMap.set(area, (areaMap.get(area) || 0) + 1);
-            categoriaMap.set(
-              categoria,
-              (categoriaMap.get(categoria) || 0) + 1
-            );
-          }
-        }
-      });
-    }
-
-    const estudiantesPorArea = Array.from(areaMap.entries()).map(
-      ([area, cantidad]) => ({
-        area,
-        cantidad,
-        porcentaje:
-          totalInscritos > 0
-            ? parseFloat(((cantidad / totalInscritos) * 100).toFixed(1))
-            : 0,
-      })
-    );
-
-    const estudiantesPorCategoria = Array.from(categoriaMap.entries()).map(
-      ([categoria, cantidad]) => ({
-        categoria,
-        cantidad,
-        porcentaje:
-          totalInscritos > 0
-            ? parseFloat(((cantidad / totalInscritos) * 100).toFixed(1))
-            : 0,
-      })
-    );
-
     return {
       evento: {
         idEvento: evento.idEvento,
@@ -1240,8 +1431,6 @@ const getParticipacionEventos = async (filtros = {}) => {
       participacion: {
         totalInscritos,
         porcentajeCapacidad,
-        estudiantesPorArea,
-        estudiantesPorCategoria,
       },
     };
   });
@@ -1300,8 +1489,6 @@ const getParticipacionEventos = async (filtros = {}) => {
     filtros: {
       fechaInicio: filtros.fechaInicio || null,
       fechaFin: filtros.fechaFin || null,
-      areaId: filtros.areaId || null,
-      categoriaId: filtros.categoriaId || null,
     },
     feriaActual: formatFeriaInfo(feriaActual),
   };
