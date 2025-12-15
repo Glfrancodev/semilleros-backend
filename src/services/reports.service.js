@@ -1246,6 +1246,14 @@ const getCalificacionesFeria = async (filtros = {}) => {
         calificacionesPorJurado.reduce((a, b) => a + b, 0) /
         calificacionesPorJurado.length;
 
+      // Obtener área y categoría de forma segura
+      const area =
+        proyecto.grupoMateria?.materia?.areaCategoria?.area?.nombre ||
+        "Sin área";
+      const categoria =
+        proyecto.grupoMateria?.materia?.areaCategoria?.categoria?.nombre ||
+        "Sin categoría";
+
       proyectosConCalificacion.push({
         proyecto: {
           idProyecto: proyecto.idProyecto,
@@ -1253,8 +1261,8 @@ const getCalificacionesFeria = async (filtros = {}) => {
           descripcion: proyecto.descripcion,
         },
         calificacionPromedio: parseFloat(promedioProyecto.toFixed(1)),
-        area: proyecto.grupoMateria.materia.areaCategoria.area.nombre,
-        categoria: proyecto.grupoMateria.materia.areaCategoria.categoria.nombre,
+        area,
+        categoria,
       });
 
       todasCalificacionesProyecto.push(promedioProyecto);
