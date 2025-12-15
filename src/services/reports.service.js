@@ -1898,7 +1898,7 @@ const getTutoresPorFeriaGlobal = async (filtros = {}) => {
       // Contar tutores de esta feria a través de Tarea → Revision → Proyecto → GrupoMateria → Docente
       const tutoresCount = await sequelize.query(`
         SELECT 
-          COUNT(DISTINCT p."idGrupoMateria") as total,
+          COUNT(DISTINCT p."idProyecto") as total,
           COUNT(DISTINCT gm."idDocente") as unicos
         FROM "Proyecto" p
         INNER JOIN "GrupoMateria" gm ON gm."idGrupoMateria" = p."idGrupoMateria"
@@ -2459,9 +2459,9 @@ const getPromediosPorFeriaGlobal = async (filtros = {}) => {
     const todosPromedios = [];
 
     for (const feria of ferias) {
-      // Obtener todas las calificaciones de proyectos de esta feria
+      // Obtener calificaciones totales por proyecto (suma de subcalificaciones por DocenteProyecto)
       const calificaciones = await sequelize.query(`
-        SELECT c."puntajeObtenido"
+        SELECT SUM(c."puntajeObtenido") as "puntajeTotal"
         FROM "Calificacion" c
         INNER JOIN "DocenteProyecto" dp ON dp."idDocenteProyecto" = c."idDocenteProyecto"
         INNER JOIN "Proyecto" p ON p."idProyecto" = dp."idProyecto"
@@ -2476,6 +2476,7 @@ const getPromediosPorFeriaGlobal = async (filtros = {}) => {
         AND c."calificado" = true
         ${filtros.areaId ? 'AND ac."idArea" = :idArea' : ''}
         ${filtros.categoriaId ? 'AND ac."idCategoria" = :idCategoria' : ''}
+        GROUP BY dp."idDocenteProyecto"
       `, {
         replacements: {
           idFeria: feria.idFeria,
@@ -2485,7 +2486,7 @@ const getPromediosPorFeriaGlobal = async (filtros = {}) => {
         type: sequelize.QueryTypes.SELECT
       });
 
-      const puntajes = calificaciones.map(c => parseFloat(c.puntajeObtenido));
+      const puntajes = calificaciones.map(c => parseFloat(c.puntajeTotal));
       
       if (puntajes.length === 0) {
         series.push({
@@ -2615,29 +2616,38 @@ const getRankingAreasRendimientoGlobal = async (filtros = {}) => {
     const limit = filtros.limit || 10;
     const orderBy = filtros.orderBy || 'promedio';
 
-    // Obtener estadísticas por área
+    // Obtener estadísticas por área (calificaciones totales por proyecto)
     const areasData = await sequelize.query(`
       SELECT 
         a."idArea",
         a."nombre" as "nombreArea",
-        AVG(c."puntajeObtenido") as "promedioHistorico",
-        STDDEV(c."puntajeObtenido") as "desviacionEstandar",
-        COUNT(DISTINCT p."idProyecto") as "totalProyectos",
-        COUNT(DISTINCT f."idFeria") as "totalFerias"
+        AVG(calificaciones_totales."puntajeTotal") as "promedioHistorico",
+        STDDEV(calificaciones_totales."puntajeTotal") as "desviacionEstandar",
+        COUNT(DISTINCT calificaciones_totales."idProyecto") as "totalProyectos",
+        COUNT(DISTINCT calificaciones_totales."idFeria") as "totalFerias"
       FROM "Area" a
       INNER JOIN "AreaCategoria" ac ON ac."idArea" = a."idArea"
       INNER JOIN "Materia" m ON m."idAreaCategoria" = ac."idAreaCategoria"
       INNER JOIN "GrupoMateria" gm ON gm."idMateria" = m."idMateria"
       INNER JOIN "Proyecto" p ON p."idGrupoMateria" = gm."idGrupoMateria"
-      INNER JOIN "DocenteProyecto" dp ON dp."idProyecto" = p."idProyecto"
-      INNER JOIN "Calificacion" c ON c."idDocenteProyecto" = dp."idDocenteProyecto"
-      INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
-      INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
-      INNER JOIN "Feria" f ON f."idFeria" = t."idFeria"
-      WHERE f."estado" IN ('Activo', 'Finalizado')
-      AND c."calificado" = true
-      ${filtros.fechaInicio || filtros.fechaFin ? 'AND f."año" >= :añoInicio AND f."año" <= :añoFin' : ''}
-      ${filtros.ferias && filtros.ferias.length > 0 ? 'AND f."idFeria" IN (:ferias)' : ''}
+      INNER JOIN (
+        SELECT 
+          dp."idDocenteProyecto",
+          dp."idProyecto",
+          t."idFeria",
+          SUM(c."puntajeObtenido") as "puntajeTotal"
+        FROM "DocenteProyecto" dp
+        INNER JOIN "Calificacion" c ON c."idDocenteProyecto" = dp."idDocenteProyecto"
+        INNER JOIN "Proyecto" p2 ON p2."idProyecto" = dp."idProyecto"
+        INNER JOIN "Revision" r ON r."idProyecto" = p2."idProyecto"
+        INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+        INNER JOIN "Feria" f ON f."idFeria" = t."idFeria"
+        WHERE f."estado" IN ('Activo', 'Finalizado')
+        AND c."calificado" = true
+        ${filtros.fechaInicio || filtros.fechaFin ? 'AND f."año" >= :añoInicio AND f."año" <= :añoFin' : ''}
+        ${filtros.ferias && filtros.ferias.length > 0 ? 'AND f."idFeria" IN (:ferias)' : ''}
+        GROUP BY dp."idDocenteProyecto", dp."idProyecto", t."idFeria"
+      ) calificaciones_totales ON calificaciones_totales."idProyecto" = p."idProyecto"
       GROUP BY a."idArea", a."nombre"
       HAVING COUNT(DISTINCT p."idProyecto") > 0
       ORDER BY ${orderBy === 'consistencia' ? '"desviacionEstandar" ASC' : '"promedioHistorico" DESC'}
@@ -2657,7 +2667,7 @@ const getRankingAreasRendimientoGlobal = async (filtros = {}) => {
       const evolucion = await sequelize.query(`
         SELECT 
           f."nombre" as "nombreFeria",
-          AVG(c."puntajeObtenido") as promedio
+          AVG(calificaciones_totales."puntajeTotal") as promedio
         FROM "Feria" f
         INNER JOIN "Tarea" t ON t."idFeria" = f."idFeria"
         INNER JOIN "Revision" r ON r."idTarea" = t."idTarea"
@@ -2665,11 +2675,18 @@ const getRankingAreasRendimientoGlobal = async (filtros = {}) => {
         INNER JOIN "GrupoMateria" gm ON gm."idGrupoMateria" = p."idGrupoMateria"
         INNER JOIN "Materia" m ON m."idMateria" = gm."idMateria"
         INNER JOIN "AreaCategoria" ac ON ac."idAreaCategoria" = m."idAreaCategoria"
-        INNER JOIN "DocenteProyecto" dp ON dp."idProyecto" = p."idProyecto"
-        INNER JOIN "Calificacion" c ON c."idDocenteProyecto" = dp."idDocenteProyecto"
+        INNER JOIN (
+          SELECT 
+            dp."idDocenteProyecto",
+            dp."idProyecto",
+            SUM(c."puntajeObtenido") as "puntajeTotal"
+          FROM "DocenteProyecto" dp
+          INNER JOIN "Calificacion" c ON c."idDocenteProyecto" = dp."idDocenteProyecto"
+          WHERE c."calificado" = true
+          GROUP BY dp."idDocenteProyecto", dp."idProyecto"
+        ) calificaciones_totales ON calificaciones_totales."idProyecto" = p."idProyecto"
         WHERE ac."idArea" = :idArea
         AND f."estado" IN ('Activo', 'Finalizado')
-        AND c."calificado" = true
         GROUP BY f."idFeria", f."nombre", f."año", f."semestre"
         ORDER BY f."año" ASC, f."semestre" ASC
       `, {
