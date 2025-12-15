@@ -2478,6 +2478,7 @@ const getPromediosPorFeriaGlobal = async (filtros = {}) => {
           INNER JOIN "AreaCategoria" ac ON ac."idAreaCategoria" = m."idAreaCategoria"
           ` : ''}
           WHERE t."idFeria" = :idFeria
+          AND t."orden" = 0
           AND c."calificado" = true
           ${filtros.areaId ? 'AND ac."idArea" = :idArea' : ''}
           ${filtros.categoriaId ? 'AND ac."idCategoria" = :idCategoria' : ''}
@@ -2493,10 +2494,29 @@ const getPromediosPorFeriaGlobal = async (filtros = {}) => {
         type: sequelize.QueryTypes.SELECT
       });
 
-      console.log('🔍 DEBUG - Calificaciones query result:', JSON.stringify(calificaciones.slice(0, 3), null, 2));
-      console.log('🔍 DEBUG - Total calificaciones:', calificaciones.length);
+      // Obtener el puntaje máximo total de la feria (suma de todos los maximoPuntaje de subcalificaciones)
+      const puntajeMaximoResult = await sequelize.query(`
+        SELECT SUM(sc."maximoPuntaje") as "puntajeMaximo"
+        FROM "Feria" f
+        INNER JOIN "TipoCalificacion" tc ON tc."idTipoCalificacion" = f."idTipoCalificacion"
+        INNER JOIN "SubCalificacion" sc ON sc."idTipoCalificacion" = tc."idTipoCalificacion"
+        WHERE f."idFeria" = :idFeria
+      `, {
+        replacements: { idFeria: feria.idFeria },
+        type: sequelize.QueryTypes.SELECT
+      });
 
-      const puntajes = calificaciones.map(c => parseFloat(c.puntajeTotal));
+      const puntajeMaximo = parseFloat(puntajeMaximoResult[0]?.puntajeMaximo || 100);
+      console.log('🔍 DEBUG - Puntaje máximo total:', puntajeMaximo);
+
+      // Normalizar puntajes a escala de 100
+      const puntajes = calificaciones.map(c => {
+        const puntajeRaw = parseFloat(c.puntajeTotal);
+        const puntajeNormalizado = (puntajeRaw / puntajeMaximo) * 100;
+        return parseFloat(puntajeNormalizado.toFixed(2));
+      });
+
+      console.log('🔍 DEBUG - Primeros 3 puntajes normalizados:', puntajes.slice(0, 3));
       
       if (puntajes.length === 0) {
         series.push({
@@ -2653,6 +2673,7 @@ const getRankingAreasRendimientoGlobal = async (filtros = {}) => {
         INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
         INNER JOIN "Feria" f ON f."idFeria" = t."idFeria"
         WHERE f."estado" IN ('Activo', 'Finalizado')
+        AND t."orden" = 0
         AND c."calificado" = true
         ${filtros.fechaInicio || filtros.fechaFin ? 'AND f."año" >= :añoInicio AND f."año" <= :añoFin' : ''}
         ${filtros.ferias && filtros.ferias.length > 0 ? 'AND f."idFeria" IN (:ferias)' : ''}
@@ -2692,7 +2713,11 @@ const getRankingAreasRendimientoGlobal = async (filtros = {}) => {
             SUM(c."puntajeObtenido") as "puntajeTotal"
           FROM "DocenteProyecto" dp
           INNER JOIN "Calificacion" c ON c."idDocenteProyecto" = dp."idDocenteProyecto"
+          INNER JOIN "Proyecto" p2 ON p2."idProyecto" = dp."idProyecto"
+          INNER JOIN "Revision" r2 ON r2."idProyecto" = p2."idProyecto"
+          INNER JOIN "Tarea" t2 ON t2."idTarea" = r2."idTarea"
           WHERE c."calificado" = true
+          AND t2."orden" = 0
           GROUP BY dp."idDocenteProyecto", dp."idProyecto"
         ) calificaciones_totales ON calificaciones_totales."idProyecto" = p."idProyecto"
         WHERE ac."idArea" = :idArea
