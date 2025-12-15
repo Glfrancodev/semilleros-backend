@@ -149,4 +149,14 @@ router.get(
   reportsController.getRankingAreasRendimientoGlobal
 );
 
+// ============================================
+// REPORTES GLOBALES - MATRIZ ÁREA VS CATEGORÍA
+// ============================================
+
+// Matriz: Área vs Categoría (Heatmap)
+router.get(
+  "/global/matriz/area-categoria",
+  reportsController.getMatrizAreaCategoriaGlobal
+);
+
 module.exports = router;

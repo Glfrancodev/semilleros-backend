@@ -2816,9 +2816,248 @@ const getRankingAreasRendimientoGlobal = async (filtros = {}) => {
 };
 
 // ============================================
+// REPORTES GLOBALES - MATRIZ ÁREA VS CATEGORÍA
+// ============================================
+
+/**
+ * Obtener matriz de área vs categoría (heatmap)
+ */
+const getMatrizAreaCategoriaGlobal = async (filtros = {}) => {
+  try {
+    const whereFeria = aplicarFiltrosGlobales(filtros);
+    whereFeria.estado = {
+      [Op.in]: ['Activo', 'Finalizado']
+    };
+
+    const metrica = filtros.metrica || 'ambas';
+
+    // Obtener datos de la matriz: conteo y promedio por área-categoría
+    const matrizData = await sequelize.query(`
+      SELECT 
+        a."idArea",
+        a."nombre" as "nombreArea",
+        c."idCategoria",
+        c."nombre" as "nombreCategoria",
+        COUNT(DISTINCT calificaciones_proyecto."idProyecto") as "totalProyectos",
+        AVG(calificaciones_proyecto."promedioProyecto") as "promedioCalificacion"
+      FROM "Area" a
+      CROSS JOIN "Categoria" c
+      LEFT JOIN "AreaCategoria" ac ON ac."idArea" = a."idArea" AND ac."idCategoria" = c."idCategoria"
+      LEFT JOIN "Materia" m ON m."idAreaCategoria" = ac."idAreaCategoria"
+      LEFT JOIN "GrupoMateria" gm ON gm."idMateria" = m."idMateria"
+      LEFT JOIN "Proyecto" p ON p."idGrupoMateria" = gm."idGrupoMateria"
+      LEFT JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+      LEFT JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+      LEFT JOIN "Feria" f ON f."idFeria" = t."idFeria"
+      LEFT JOIN (
+        SELECT 
+          calificaciones_jurado."idProyecto",
+          AVG(calificaciones_jurado."puntajeTotal") as "promedioProyecto"
+        FROM (
+          SELECT 
+            dp2."idProyecto",
+            dp2."idDocenteProyecto",
+            SUM(cal."puntajeObtenido") as "puntajeTotal"
+          FROM "DocenteProyecto" dp2
+          INNER JOIN "Calificacion" cal ON cal."idDocenteProyecto" = dp2."idDocenteProyecto"
+          INNER JOIN "Proyecto" p2 ON p2."idProyecto" = dp2."idProyecto"
+          INNER JOIN "Revision" r2 ON r2."idProyecto" = p2."idProyecto"
+          INNER JOIN "Tarea" t2 ON t2."idTarea" = r2."idTarea"
+          WHERE cal."calificado" = true
+          AND t2."orden" = 0
+          GROUP BY dp2."idProyecto", dp2."idDocenteProyecto"
+        ) calificaciones_jurado
+        GROUP BY calificaciones_jurado."idProyecto"
+      ) calificaciones_proyecto ON calificaciones_proyecto."idProyecto" = p."idProyecto"
+      WHERE (f."estado" IN ('Activo', 'Finalizado') OR f."estado" IS NULL)
+      ${filtros.fechaInicio || filtros.fechaFin ? 'AND (f."año" >= :añoInicio AND f."año" <= :añoFin OR f."año" IS NULL)' : ''}
+      ${filtros.ferias && filtros.ferias.length > 0 ? 'AND (f."idFeria" IN (:ferias) OR f."idFeria" IS NULL)' : ''}
+      AND t."orden" = 0 OR t."orden" IS NULL
+      GROUP BY a."idArea", a."nombre", c."idCategoria", c."nombre"
+      ORDER BY a."nombre" ASC, c."nombre" ASC
+    `, {
+      replacements: {
+        ...(filtros.fechaInicio && { añoInicio: new Date(filtros.fechaInicio).getFullYear() }),
+        ...(filtros.fechaFin && { añoFin: new Date(filtros.fechaFin).getFullYear() }),
+        ...(filtros.ferias && filtros.ferias.length > 0 && { ferias: filtros.ferias })
+      },
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    // Calcular totales por área y categoría
+    const totalesPorArea = new Map();
+    const totalesPorCategoria = new Map();
+    let totalGeneral = 0;
+
+    matrizData.forEach(row => {
+      const proyectos = parseInt(row.totalProyectos) || 0;
+      const promedio = parseFloat(row.promedioCalificacion) || 0;
+
+      // Totales por área
+      if (!totalesPorArea.has(row.idArea)) {
+        totalesPorArea.set(row.idArea, {
+          totalProyectos: 0,
+          sumaPromedios: 0,
+          contadorPromedios: 0
+        });
+      }
+      const areaData = totalesPorArea.get(row.idArea);
+      areaData.totalProyectos += proyectos;
+      if (promedio > 0) {
+        areaData.sumaPromedios += promedio * proyectos;
+        areaData.contadorPromedios += proyectos;
+      }
+
+      // Totales por categoría
+      if (!totalesPorCategoria.has(row.idCategoria)) {
+        totalesPorCategoria.set(row.idCategoria, {
+          nombre: row.nombreCategoria,
+          totalProyectos: 0,
+          sumaPromedios: 0,
+          contadorPromedios: 0
+        });
+      }
+      const catData = totalesPorCategoria.get(row.idCategoria);
+      catData.totalProyectos += proyectos;
+      if (promedio > 0) {
+        catData.sumaPromedios += promedio * proyectos;
+        catData.contadorPromedios += proyectos;
+      }
+
+      totalGeneral += proyectos;
+    });
+
+    // Construir matriz agrupada por área
+    const areasMap = new Map();
+    matrizData.forEach(row => {
+      if (!areasMap.has(row.idArea)) {
+        areasMap.set(row.idArea, {
+          area: {
+            idArea: row.idArea,
+            nombre: row.nombreArea
+          },
+          categorias: []
+        });
+      }
+
+      const proyectos = parseInt(row.totalProyectos) || 0;
+      const promedio = parseFloat(row.promedioCalificacion) || 0;
+      const areaTotal = totalesPorArea.get(row.idArea).totalProyectos;
+      const categoriaTotal = totalesPorCategoria.get(row.idCategoria).totalProyectos;
+
+      areasMap.get(row.idArea).categorias.push({
+        categoria: {
+          idCategoria: row.idCategoria,
+          nombre: row.nombreCategoria
+        },
+        metricas: {
+          totalProyectos: proyectos,
+          promedioCalificacion: promedio > 0 ? parseFloat(promedio.toFixed(2)) : null,
+          porcentajeDelArea: areaTotal > 0 ? parseFloat(((proyectos / areaTotal) * 100).toFixed(1)) : 0,
+          porcentajeDeLaCategoria: categoriaTotal > 0 ? parseFloat(((proyectos / categoriaTotal) * 100).toFixed(1)) : 0
+        }
+      });
+    });
+
+    // Agregar totales por área
+    const matriz = Array.from(areasMap.values()).map(areaObj => {
+      const areaData = totalesPorArea.get(areaObj.area.idArea);
+      return {
+        ...areaObj,
+        totales: {
+          totalProyectos: areaData.totalProyectos,
+          promedioArea: areaData.contadorPromedios > 0 
+            ? parseFloat((areaData.sumaPromedios / areaData.contadorPromedios).toFixed(2))
+            : null
+        }
+      };
+    });
+
+    // Totales por categoría
+    const totalesPorCategoriaArray = Array.from(totalesPorCategoria.entries()).map(([id, data]) => ({
+      categoria: data.nombre,
+      totalProyectos: data.totalProyectos,
+      promedioCalificacion: data.contadorPromedios > 0
+        ? parseFloat((data.sumaPromedios / data.contadorPromedios).toFixed(2))
+        : null
+    }));
+
+    return {
+      matriz,
+      totalesPorCategoria: totalesPorCategoriaArray,
+      estadisticasGenerales: {
+        totalProyectos: totalGeneral,
+        totalAreas: areasMap.size,
+        totalCategorias: totalesPorCategoria.size
+      },
+      filtros: {
+        fechaInicio: filtros.fechaInicio || null,
+        fechaFin: filtros.fechaFin || null,
+        ferias: filtros.ferias || [],
+        metrica
+      },
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error en getMatrizAreaCategoriaGlobal:', error);
+    throw error;
+  }
+};
+
+// ============================================
 // EXPORTAR MÓDULO
 // ============================================
 
+// Assuming 'router' and 'reportsController' are defined elsewhere,
+// for example, in an Express setup.
+// This change implies a transformation of the file's purpose.
+
+// Example of how this might fit into an Express router setup:
+// const express = require('express');
+// const router = express.Router();
+// const reportsController = {
+//   getFeriaActual,
+//   getTarea0,
+//   buildProyectosFeriaQuery,
+//   getProyectosInscritos,
+//   getEstudiantesParticipantes,
+//   getTutores,
+//   getJurados,
+//   getEventosRealizados,
+//   getPorcentajeAprobadosTutor,
+//   getPorcentajeAprobadosAdmin,
+//   getPorcentajeAprobadosExposicion,
+//   getProyectosPorEstado,
+//   getParticipacionAreaCategoria,
+//   getCargaDesempenoJurados,
+//   getCalificacionesFeria,
+//   getParticipacionEventos,
+//   getFeriaActualInfo,
+//   getProyectosPorFeriaGlobal,
+//   getEstudiantesPorFeriaGlobal,
+//   getJuradosPorFeriaGlobal,
+//   getTutoresPorFeriaGlobal,
+//   getAreasFrecuentesGlobal,
+//   getCategoriasFrecuentesGlobal,
+//   getComparacionFeriasGlobal,
+//   getPromediosPorFeriaGlobal,
+//   getRankingAreasRendimientoGlobal,
+//   getMatrizAreaCategoriaGlobal,
+// };
+
+// ============================================
+// REPORTES GLOBALES - MATRIZ ÁREA VS CATEGORÍA
+// ============================================
+
+// Matriz: Área vs Categoría (Heatmap)
+// router.get(
+//   "/global/matriz/area-categoria",
+//   reportsController.getMatrizAreaCategoriaGlobal
+// );
+
+// module.exports = router;
+
+// Original module.exports structure (assuming this file is a service/utility)
 module.exports = {
   // Auxiliares
   getFeriaActual,
@@ -2863,6 +3102,9 @@ module.exports = {
   // Rendimiento Académico Global
   getPromediosPorFeriaGlobal,
   getRankingAreasRendimientoGlobal,
+
+  // Matriz Área vs Categoría
+  getMatrizAreaCategoriaGlobal,
 };
 
 

@@ -889,3 +889,75 @@ module.exports = {
   getRankingAreasRendimientoGlobal,
 };
 
+// ============================================
+// CONTROLADORES DE MATRIZ ÁREA VS CATEGORÍA
+// ============================================
+
+/**
+ * Matriz área vs categoría (heatmap)
+ */
+const getMatrizAreaCategoriaGlobal = async (req, res) => {
+  try {
+    const filtros = {
+      fechaInicio: req.query.fechaInicio,
+      fechaFin: req.query.fechaFin,
+      ferias: req.query.ferias ? req.query.ferias.split(',') : null,
+      metrica: req.query.metrica || 'ambas',
+    };
+
+    const data = await reportsService.getMatrizAreaCategoriaGlobal(filtros);
+
+    return res.success("Matriz área-categoría obtenida exitosamente", data);
+  } catch (err) {
+    console.error("Error al obtener matriz área-categoría:", err);
+    return res.error("Error al obtener matriz área-categoría", 500, {
+      code: "INTERNAL_ERROR",
+      details: err.message,
+    });
+  }
+};
+
+module.exports = {
+  // KPIs Feria Actual
+  getProyectosInscritos,
+  getEstudiantesParticipantes,
+  getTutores,
+  getJurados,
+  getEventosRealizados,
+  getPorcentajeAprobadosTutor,
+  getPorcentajeAprobadosAdmin,
+  getPorcentajeAprobadosExposicion,
+
+  // Gráficos Feria Actual
+  getProyectosPorEstado,
+  getParticipacionAreaCategoria,
+  getCargaDesempenoJurados,
+  getCalificacionesFeria,
+  getParticipacionEventos,
+
+  // Auxiliar
+  getFeriaActualInfo,
+
+  // ============================================
+  // REPORTES GLOBALES
+  // ============================================
+  
+  // KPIs Globales
+  getProyectosPorFeriaGlobal,
+  getEstudiantesPorFeriaGlobal,
+  getJuradosPorFeriaGlobal,
+  getTutoresPorFeriaGlobal,
+
+  // Tendencias Globales
+  getAreasFrecuentesGlobal,
+  getCategoriasFrecuentesGlobal,
+  getComparacionFeriasGlobal,
+
+  // Rendimiento Académico Global
+  getPromediosPorFeriaGlobal,
+  getRankingAreasRendimientoGlobal,
+
+  // Matriz Área vs Categoría
+  getMatrizAreaCategoriaGlobal,
+};
+
