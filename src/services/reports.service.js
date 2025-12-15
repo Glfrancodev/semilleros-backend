@@ -1506,6 +1506,932 @@ const getParticipacionEventos = async (filtros = {}) => {
   };
 };
 
+// ============================================
+// REPORTES GLOBALES - FUNCIONES AUXILIARES
+// ============================================
+
+/**
+ * Calcular crecimiento porcentual entre dos valores
+ */
+const calcularCrecimiento = (valorActual, valorAnterior) => {
+  if (!valorAnterior || valorAnterior === 0) return null;
+  
+  const crecimiento = ((valorActual - valorAnterior) / valorAnterior) * 100;
+  
+  return {
+    valor: parseFloat(crecimiento.toFixed(1)),
+    tipo: crecimiento >= 0 ? 'incremento' : 'decremento'
+  };
+};
+
+/**
+ * Determinar tendencia basada en variación promedio
+ */
+const determinarTendencia = (variacionPromedio) => {
+  if (variacionPromedio > 5) return 'creciente';
+  if (variacionPromedio < -5) return 'decreciente';
+  return 'estable';
+};
+
+/**
+ * Aplicar filtros comunes a queries globales
+ */
+const aplicarFiltrosGlobales = (filtros) => {
+  const where = {};
+  
+  // Filtrar por año basado en las fechas proporcionadas
+  if (filtros.fechaInicio && filtros.fechaFin) {
+    const añoInicio = new Date(filtros.fechaInicio).getFullYear();
+    const añoFin = new Date(filtros.fechaFin).getFullYear();
+    where.año = {
+      [Op.between]: [añoInicio, añoFin]
+    };
+  } else if (filtros.fechaInicio) {
+    const añoInicio = new Date(filtros.fechaInicio).getFullYear();
+    where.año = {
+      [Op.gte]: añoInicio
+    };
+  } else if (filtros.fechaFin) {
+    const añoFin = new Date(filtros.fechaFin).getFullYear();
+    where.año = {
+      [Op.lte]: añoFin
+    };
+  }
+  
+  if (filtros.ferias && filtros.ferias.length > 0) {
+    where.idFeria = {
+      [Op.in]: filtros.ferias
+    };
+  }
+  
+  return where;
+};
+
+// ============================================
+// REPORTES GLOBALES - KPIs
+// ============================================
+
+/**
+ * Obtener proyectos por feria (serie temporal)
+ */
+const getProyectosPorFeriaGlobal = async (filtros = {}) => {
+  try {
+    // Construir filtros para ferias
+    const whereFeria = aplicarFiltrosGlobales(filtros);
+    whereFeria.estado = {
+      [Op.in]: ['Activo', 'Finalizado']
+    };
+
+    // Obtener ferias ordenadas cronológicamente
+    const ferias = await Feria.findAll({
+      where: whereFeria,
+      order: [['año', 'ASC'], ['semestre', 'ASC']],
+      attributes: ['idFeria', 'nombre', 'semestre', 'año']
+    });
+
+    // Construir filtros para proyectos
+    const whereProyecto = {};
+    if (filtros.areaId) {
+      whereProyecto.idArea = filtros.areaId;
+    }
+    if (filtros.categoriaId) {
+      whereProyecto.idCategoria = filtros.categoriaId;
+    }
+
+    // Obtener conteo de proyectos por feria
+    const series = [];
+    let valorAnterior = null;
+
+    for (const feria of ferias) {
+      // Contar proyectos únicos de esta feria a través de Tarea → Revision → Proyecto
+      const proyectosCount = await sequelize.query(`
+        SELECT COUNT(DISTINCT p."idProyecto") as total
+        FROM "Proyecto" p
+        INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+        INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+        WHERE t."idFeria" = :idFeria
+        ${filtros.areaId ? 'AND p."idArea" = :idArea' : ''}
+        ${filtros.categoriaId ? 'AND p."idCategoria" = :idCategoria' : ''}
+      `, {
+        replacements: {
+          idFeria: feria.idFeria,
+          ...(filtros.areaId && { idArea: filtros.areaId }),
+          ...(filtros.categoriaId && { idCategoria: filtros.categoriaId })
+        },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      const totalProyectos = parseInt(proyectosCount[0]?.total || 0);
+      const crecimiento = calcularCrecimiento(totalProyectos, valorAnterior);
+
+      series.push({
+        feria: {
+          idFeria: feria.idFeria,
+          nombre: feria.nombre,
+          semestre: feria.semestre,
+          año: feria.año
+        },
+        totalProyectos,
+        crecimiento
+      });
+
+      valorAnterior = totalProyectos;
+    }
+
+    // Calcular estadísticas
+    const totales = series.map(s => s.totalProyectos);
+    const promedioProyectosPorFeria = totales.length > 0 
+      ? parseFloat((totales.reduce((a, b) => a + b, 0) / totales.length).toFixed(1))
+      : 0;
+
+    const feriaConMasProyectos = series.reduce((max, s) => 
+      s.totalProyectos > (max?.totalProyectos || 0) ? s : max, null);
+    
+    const feriaConMenosProyectos = series.reduce((min, s) => 
+      s.totalProyectos < (min?.totalProyectos || Infinity) ? s : min, null);
+
+    return {
+      series,
+      estadisticas: {
+        totalFerias: series.length,
+        promedioProyectosPorFeria,
+        feriaConMasProyectos: feriaConMasProyectos ? {
+          nombre: feriaConMasProyectos.feria.nombre,
+          total: feriaConMasProyectos.totalProyectos
+        } : null,
+        feriaConMenosProyectos: feriaConMenosProyectos ? {
+          nombre: feriaConMenosProyectos.feria.nombre,
+          total: feriaConMenosProyectos.totalProyectos
+        } : null
+      },
+      filtros: {
+        fechaInicio: filtros.fechaInicio || null,
+        fechaFin: filtros.fechaFin || null,
+        ferias: filtros.ferias || [],
+        areaId: filtros.areaId || null,
+        categoriaId: filtros.categoriaId || null
+      },
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error en getProyectosPorFeriaGlobal:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtener estudiantes por feria (serie temporal)
+ */
+const getEstudiantesPorFeriaGlobal = async (filtros = {}) => {
+  try {
+    const whereFeria = aplicarFiltrosGlobales(filtros);
+    whereFeria.estado = {
+      [Op.in]: ['Activo', 'Finalizado']
+    };
+
+    const ferias = await Feria.findAll({
+      where: whereFeria,
+      order: [['año', 'ASC'], ['semestre', 'ASC']],
+      attributes: ['idFeria', 'nombre', 'semestre', 'año']
+    });
+
+    const series = [];
+    let valorAnterior = null;
+
+    for (const feria of ferias) {
+      // Contar estudiantes de esta feria a través de Tarea → Revision → Proyecto → EstudianteProyecto
+      const estudiantesCount = await sequelize.query(`
+        SELECT 
+          COUNT(ep."idEstudiante") as total,
+          COUNT(DISTINCT ep."idEstudiante") as unicos
+        FROM "EstudianteProyecto" ep
+        INNER JOIN "Proyecto" p ON p."idProyecto" = ep."idProyecto"
+        INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+        INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+        WHERE t."idFeria" = :idFeria
+        ${filtros.areaId ? 'AND p."idArea" = :idArea' : ''}
+        ${filtros.categoriaId ? 'AND p."idCategoria" = :idCategoria' : ''}
+      `, {
+        replacements: {
+          idFeria: feria.idFeria,
+          ...(filtros.areaId && { idArea: filtros.areaId }),
+          ...(filtros.categoriaId && { idCategoria: filtros.categoriaId })
+        },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      const totalEstudiantes = parseInt(estudiantesCount[0]?.total || 0);
+      const estudiantesUnicos = parseInt(estudiantesCount[0]?.unicos || 0);
+
+      const crecimiento = calcularCrecimiento(totalEstudiantes, valorAnterior);
+
+      series.push({
+        feria: {
+          idFeria: feria.idFeria,
+          nombre: feria.nombre,
+          semestre: feria.semestre,
+          año: feria.año
+        },
+        totalEstudiantes,
+        estudiantesUnicos,
+        crecimiento
+      });
+
+      valorAnterior = totalEstudiantes;
+    }
+
+    const totales = series.map(s => s.totalEstudiantes);
+    const promedioEstudiantesPorFeria = totales.length > 0
+      ? parseFloat((totales.reduce((a, b) => a + b, 0) / totales.length).toFixed(1))
+      : 0;
+
+    // Calcular tasa de retención (estudiantes que participan en múltiples ferias)
+    const todosEstudiantes = series.flatMap(s => 
+      Array(s.totalEstudiantes).fill(null).map((_, i) => s.feria.idFeria + '-' + i)
+    );
+    const tasaRetencion = totales.length > 1 
+      ? parseFloat(((todosEstudiantes.length / (totales.reduce((a, b) => a + b, 0) || 1)) * 100).toFixed(1))
+      : 0;
+
+    return {
+      series,
+      estadisticas: {
+        totalFerias: series.length,
+        promedioEstudiantesPorFeria,
+        tasaRetencion
+      },
+      filtros: {
+        fechaInicio: filtros.fechaInicio || null,
+        fechaFin: filtros.fechaFin || null,
+        ferias: filtros.ferias || [],
+        areaId: filtros.areaId || null,
+        categoriaId: filtros.categoriaId || null
+      },
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error en getEstudiantesPorFeriaGlobal:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtener jurados por feria (serie temporal)
+ */
+const getJuradosPorFeriaGlobal = async (filtros = {}) => {
+  try {
+    const whereFeria = aplicarFiltrosGlobales(filtros);
+    whereFeria.estado = {
+      [Op.in]: ['Activo', 'Finalizado']
+    };
+
+    const ferias = await Feria.findAll({
+      where: whereFeria,
+      order: [['año', 'ASC'], ['semestre', 'ASC']],
+      attributes: ['idFeria', 'nombre', 'semestre', 'año']
+    });
+
+    const series = [];
+    let valorAnterior = null;
+
+    for (const feria of ferias) {
+      // Contar jurados de esta feria a través de Tarea → Revision → Proyecto → DocenteProyecto
+      const juradosCount = await sequelize.query(`
+        SELECT 
+          COUNT(dp."idDocente") as total,
+          COUNT(DISTINCT dp."idDocente") as unicos
+        FROM "DocenteProyecto" dp
+        INNER JOIN "Proyecto" p ON p."idProyecto" = dp."idProyecto"
+        INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+        INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+        WHERE t."idFeria" = :idFeria
+        ${filtros.areaId ? 'AND p."idArea" = :idArea' : ''}
+        ${filtros.categoriaId ? 'AND p."idCategoria" = :idCategoria' : ''}
+      `, {
+        replacements: {
+          idFeria: feria.idFeria,
+          ...(filtros.areaId && { idArea: filtros.areaId }),
+          ...(filtros.categoriaId && { idCategoria: filtros.categoriaId })
+        },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      const totalJurados = parseInt(juradosCount[0]?.total || 0);
+      const juradosUnicos = parseInt(juradosCount[0]?.unicos || 0);
+      const promedioProyectosPorJurado = juradosUnicos > 0
+        ? parseFloat((totalJurados / juradosUnicos).toFixed(2))
+        : 0;
+
+      const crecimiento = calcularCrecimiento(totalJurados, valorAnterior);
+
+      series.push({
+        feria: {
+          idFeria: feria.idFeria,
+          nombre: feria.nombre,
+          semestre: feria.semestre,
+          año: feria.año
+        },
+        totalJurados,
+        juradosUnicos,
+        promedioProyectosPorJurado,
+        crecimiento
+      });
+
+      valorAnterior = totalJurados;
+    }
+
+    const totales = series.map(s => s.totalJurados);
+    const promedioJuradosPorFeria = totales.length > 0
+      ? parseFloat((totales.reduce((a, b) => a + b, 0) / totales.length).toFixed(1))
+      : 0;
+
+    const cargas = series.map(s => s.promedioProyectosPorJurado).filter(c => c > 0);
+    const cargaPromedioGeneral = cargas.length > 0
+      ? parseFloat((cargas.reduce((a, b) => a + b, 0) / cargas.length).toFixed(2))
+      : 0;
+
+    return {
+      series,
+      estadisticas: {
+        totalFerias: series.length,
+        promedioJuradosPorFeria,
+        cargaPromedioGeneral
+      },
+      filtros: {
+        fechaInicio: filtros.fechaInicio || null,
+        fechaFin: filtros.fechaFin || null,
+        ferias: filtros.ferias || [],
+        areaId: filtros.areaId || null,
+        categoriaId: filtros.categoriaId || null
+      },
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error en getJuradosPorFeriaGlobal:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtener tutores por feria (serie temporal)
+ */
+const getTutoresPorFeriaGlobal = async (filtros = {}) => {
+  try {
+    const whereFeria = aplicarFiltrosGlobales(filtros);
+    whereFeria.estado = {
+      [Op.in]: ['Activo', 'Finalizado']
+    };
+
+    const ferias = await Feria.findAll({
+      where: whereFeria,
+      order: [['año', 'ASC'], ['semestre', 'ASC']],
+      attributes: ['idFeria', 'nombre', 'semestre', 'año']
+    });
+
+    const series = [];
+    let valorAnterior = null;
+
+    for (const feria of ferias) {
+      // Contar tutores de esta feria a través de Tarea → Revision → Proyecto → GrupoMateria → Docente
+      const tutoresCount = await sequelize.query(`
+        SELECT 
+          COUNT(gm."idDocente") as total,
+          COUNT(DISTINCT gm."idDocente") as unicos
+        FROM "Proyecto" p
+        INNER JOIN "GrupoMateria" gm ON gm."idGrupoMateria" = p."idGrupoMateria"
+        INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+        INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+        WHERE t."idFeria" = :idFeria
+        ${filtros.areaId ? 'AND p."idArea" = :idArea' : ''}
+        ${filtros.categoriaId ? 'AND p."idCategoria" = :idCategoria' : ''}
+      `, {
+        replacements: {
+          idFeria: feria.idFeria,
+          ...(filtros.areaId && { idArea: filtros.areaId }),
+          ...(filtros.categoriaId && { idCategoria: filtros.categoriaId })
+        },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      const totalTutores = parseInt(tutoresCount[0]?.total || 0);
+      const tutoresUnicos = parseInt(tutoresCount[0]?.unicos || 0);
+      const promedioProyectosPorTutor = tutoresUnicos > 0
+        ? parseFloat((totalTutores / tutoresUnicos).toFixed(2))
+        : 0;
+
+      const crecimiento = calcularCrecimiento(totalTutores, valorAnterior);
+
+      series.push({
+        feria: {
+          idFeria: feria.idFeria,
+          nombre: feria.nombre,
+          semestre: feria.semestre,
+          año: feria.año
+        },
+        totalTutores,
+        tutoresUnicos,
+        promedioProyectosPorTutor,
+        crecimiento
+      });
+
+      valorAnterior = totalTutores;
+    }
+
+    const totales = series.map(s => s.totalTutores);
+    const promedioTutoresPorFeria = totales.length > 0
+      ? parseFloat((totales.reduce((a, b) => a + b, 0) / totales.length).toFixed(1))
+      : 0;
+
+    const cargas = series.map(s => s.promedioProyectosPorTutor).filter(c => c > 0);
+    const cargaPromedioGeneral = cargas.length > 0
+      ? parseFloat((cargas.reduce((a, b) => a + b, 0) / cargas.length).toFixed(2))
+      : 0;
+
+    return {
+      series,
+      estadisticas: {
+        totalFerias: series.length,
+        promedioTutoresPorFeria,
+        cargaPromedioGeneral
+      },
+      filtros: {
+        fechaInicio: filtros.fechaInicio || null,
+        fechaFin: filtros.fechaFin || null,
+        ferias: filtros.ferias || [],
+        areaId: filtros.areaId || null,
+        categoriaId: filtros.categoriaId || null
+      },
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error en getTutoresPorFeriaGlobal:', error);
+    throw error;
+  }
+};
+
+// ============================================
+// REPORTES GLOBALES - TENDENCIAS
+// ============================================
+
+/**
+ * Obtener áreas más frecuentes (histórico)
+ */
+const getAreasFrecuentesGlobal = async (filtros = {}) => {
+  try {
+    const whereFeria = aplicarFiltrosGlobales(filtros);
+    whereFeria.estado = {
+      [Op.in]: ['Activo', 'Finalizado']
+    };
+
+    const limit = filtros.limit || 10;
+
+    // Obtener ranking de áreas con conteo de proyectos
+    const ranking = await sequelize.query(`
+      SELECT 
+        a."idArea",
+        a."nombre" as "nombreArea",
+        COUNT(DISTINCT p."idProyecto") as "totalProyectos"
+      FROM "Area" a
+      LEFT JOIN "AreaCategoria" ac ON ac."idArea" = a."idArea"
+      LEFT JOIN "Materia" m ON m."idAreaCategoria" = ac."idAreaCategoria"
+      LEFT JOIN "GrupoMateria" gm ON gm."idMateria" = m."idMateria"
+      LEFT JOIN "Proyecto" p ON p."idGrupoMateria" = gm."idGrupoMateria"
+      LEFT JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+      LEFT JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+      LEFT JOIN "Feria" f ON f."idFeria" = t."idFeria"
+      WHERE f."estado" IN ('Activo', 'Finalizado')
+      ${filtros.fechaInicio || filtros.fechaFin ? 'AND f."año" >= :añoInicio AND f."año" <= :añoFin' : ''}
+      ${filtros.ferias && filtros.ferias.length > 0 ? 'AND f."idFeria" IN (:ferias)' : ''}
+      GROUP BY a."idArea", a."nombre"
+      ORDER BY "totalProyectos" DESC
+      LIMIT :limit
+    `, {
+      replacements: {
+        limit,
+        ...(filtros.fechaInicio && { añoInicio: new Date(filtros.fechaInicio).getFullYear() }),
+        ...(filtros.fechaFin && { añoFin: new Date(filtros.fechaFin).getFullYear() }),
+        ...(filtros.ferias && filtros.ferias.length > 0 && { ferias: filtros.ferias })
+      },
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    const totalProyectos = ranking.reduce((sum, r) => sum + parseInt(r.totalProyectos), 0);
+
+    const rankingConDetalles = await Promise.all(ranking.map(async (area) => {
+      // Obtener distribución por feria para esta área
+      const distribucion = await sequelize.query(`
+        SELECT 
+          f."nombre" as "nombreFeria",
+          COUNT(DISTINCT p."idProyecto") as cantidad
+        FROM "Feria" f
+        INNER JOIN "Tarea" t ON t."idFeria" = f."idFeria"
+        INNER JOIN "Revision" r ON r."idTarea" = t."idTarea"
+        INNER JOIN "Proyecto" p ON p."idProyecto" = r."idProyecto"
+        INNER JOIN "GrupoMateria" gm ON gm."idGrupoMateria" = p."idGrupoMateria"
+        INNER JOIN "Materia" m ON m."idMateria" = gm."idMateria"
+        INNER JOIN "AreaCategoria" ac ON ac."idAreaCategoria" = m."idAreaCategoria"
+        WHERE ac."idArea" = :idArea
+        AND f."estado" IN ('Activo', 'Finalizado')
+        GROUP BY f."idFeria", f."nombre", f."año", f."semestre"
+        ORDER BY f."año" ASC, f."semestre" ASC
+      `, {
+        replacements: { idArea: area.idArea },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      const totalArea = parseInt(area.totalProyectos);
+      const porcentajeTotal = totalProyectos > 0 ? parseFloat(((totalArea / totalProyectos) * 100).toFixed(1)) : 0;
+
+      // Calcular tendencia
+      const cantidades = distribucion.map(d => parseInt(d.cantidad));
+      let variacionPromedio = 0;
+      if (cantidades.length > 1) {
+        const variaciones = [];
+        for (let i = 1; i < cantidades.length; i++) {
+          if (cantidades[i - 1] > 0) {
+            variaciones.push(((cantidades[i] - cantidades[i - 1]) / cantidades[i - 1]) * 100);
+          }
+        }
+        variacionPromedio = variaciones.length > 0 
+          ? parseFloat((variaciones.reduce((a, b) => a + b, 0) / variaciones.length).toFixed(1))
+          : 0;
+      }
+
+      return {
+        area: {
+          idArea: area.idArea,
+          nombre: area.nombreArea
+        },
+        totalProyectos: totalArea,
+        porcentajeTotal,
+        tendencia: {
+          direccion: determinarTendencia(variacionPromedio),
+          variacionPromedio
+        },
+        distribucionPorFeria: distribucion.map(d => ({
+          feria: d.nombreFeria,
+          cantidad: parseInt(d.cantidad),
+          porcentaje: totalArea > 0 ? parseFloat(((parseInt(d.cantidad) / totalArea) * 100).toFixed(1)) : 0
+        }))
+      };
+    }));
+
+    const areaDominante = rankingConDetalles.length > 0 ? rankingConDetalles[0] : null;
+
+    return {
+      ranking: rankingConDetalles,
+      estadisticas: {
+        totalAreas: rankingConDetalles.length,
+        totalProyectos,
+        areaDominante: areaDominante ? {
+          nombre: areaDominante.area.nombre,
+          porcentaje: areaDominante.porcentajeTotal
+        } : null
+      },
+      filtros: {
+        fechaInicio: filtros.fechaInicio || null,
+        fechaFin: filtros.fechaFin || null,
+        ferias: filtros.ferias || [],
+        limit
+      },
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error en getAreasFrecuentesGlobal:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtener categorías más frecuentes (histórico)
+ */
+const getCategoriasFrecuentesGlobal = async (filtros = {}) => {
+  try {
+    const whereFeria = aplicarFiltrosGlobales(filtros);
+    whereFeria.estado = {
+      [Op.in]: ['Activo', 'Finalizado']
+    };
+
+    const limit = filtros.limit || 10;
+
+    // Obtener ranking de categorías con conteo de proyectos
+    const ranking = await sequelize.query(`
+      SELECT 
+        c."idCategoria",
+        c."nombre" as "nombreCategoria",
+        COUNT(DISTINCT p."idProyecto") as "totalProyectos"
+      FROM "Categoria" c
+      LEFT JOIN "AreaCategoria" ac ON ac."idCategoria" = c."idCategoria"
+      LEFT JOIN "Materia" m ON m."idAreaCategoria" = ac."idAreaCategoria"
+      LEFT JOIN "GrupoMateria" gm ON gm."idMateria" = m."idMateria"
+      LEFT JOIN "Proyecto" p ON p."idGrupoMateria" = gm."idGrupoMateria"
+      LEFT JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+      LEFT JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+      LEFT JOIN "Feria" f ON f."idFeria" = t."idFeria"
+      WHERE f."estado" IN ('Activo', 'Finalizado')
+      ${filtros.fechaInicio || filtros.fechaFin ? 'AND f."año" >= :añoInicio AND f."año" <= :añoFin' : ''}
+      ${filtros.ferias && filtros.ferias.length > 0 ? 'AND f."idFeria" IN (:ferias)' : ''}
+      GROUP BY c."idCategoria", c."nombre"
+      ORDER BY "totalProyectos" DESC
+      LIMIT :limit
+    `, {
+      replacements: {
+        limit,
+        ...(filtros.fechaInicio && { añoInicio: new Date(filtros.fechaInicio).getFullYear() }),
+        ...(filtros.fechaFin && { añoFin: new Date(filtros.fechaFin).getFullYear() }),
+        ...(filtros.ferias && filtros.ferias.length > 0 && { ferias: filtros.ferias })
+      },
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    const totalProyectos = ranking.reduce((sum, r) => sum + parseInt(r.totalProyectos), 0);
+
+    const rankingConDetalles = await Promise.all(ranking.map(async (categoria) => {
+      // Obtener distribución por feria para esta categoría
+      const distribucion = await sequelize.query(`
+        SELECT 
+          f."nombre" as "nombreFeria",
+          COUNT(DISTINCT p."idProyecto") as cantidad
+        FROM "Feria" f
+        INNER JOIN "Tarea" t ON t."idFeria" = f."idFeria"
+        INNER JOIN "Revision" r ON r."idTarea" = t."idTarea"
+        INNER JOIN "Proyecto" p ON p."idProyecto" = r."idProyecto"
+        INNER JOIN "GrupoMateria" gm ON gm."idGrupoMateria" = p."idGrupoMateria"
+        INNER JOIN "Materia" m ON m."idMateria" = gm."idMateria"
+        INNER JOIN "AreaCategoria" ac ON ac."idAreaCategoria" = m."idAreaCategoria"
+        WHERE ac."idCategoria" = :idCategoria
+        AND f."estado" IN ('Activo', 'Finalizado')
+        GROUP BY f."idFeria", f."nombre", f."año", f."semestre"
+        ORDER BY f."año" ASC, f."semestre" ASC
+      `, {
+        replacements: { idCategoria: categoria.idCategoria },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      const totalCategoria = parseInt(categoria.totalProyectos);
+      const porcentajeTotal = totalProyectos > 0 ? parseFloat(((totalCategoria / totalProyectos) * 100).toFixed(1)) : 0;
+
+      // Calcular tendencia
+      const cantidades = distribucion.map(d => parseInt(d.cantidad));
+      let variacionPromedio = 0;
+      if (cantidades.length > 1) {
+        const variaciones = [];
+        for (let i = 1; i < cantidades.length; i++) {
+          if (cantidades[i - 1] > 0) {
+            variaciones.push(((cantidades[i] - cantidades[i - 1]) / cantidades[i - 1]) * 100);
+          }
+        }
+        variacionPromedio = variaciones.length > 0 
+          ? parseFloat((variaciones.reduce((a, b) => a + b, 0) / variaciones.length).toFixed(1))
+          : 0;
+      }
+
+      return {
+        categoria: {
+          idCategoria: categoria.idCategoria,
+          nombre: categoria.nombreCategoria
+        },
+        totalProyectos: totalCategoria,
+        porcentajeTotal,
+        tendencia: {
+          direccion: determinarTendencia(variacionPromedio),
+          variacionPromedio
+        },
+        distribucionPorFeria: distribucion.map(d => ({
+          feria: d.nombreFeria,
+          cantidad: parseInt(d.cantidad),
+          porcentaje: totalCategoria > 0 ? parseFloat(((parseInt(d.cantidad) / totalCategoria) * 100).toFixed(1)) : 0
+        }))
+      };
+    }));
+
+    const categoriaDominante = rankingConDetalles.length > 0 ? rankingConDetalles[0] : null;
+
+    return {
+      ranking: rankingConDetalles,
+      estadisticas: {
+        totalCategorias: rankingConDetalles.length,
+        totalProyectos,
+        categoriaDominante: categoriaDominante ? {
+          nombre: categoriaDominante.categoria.nombre,
+          porcentaje: categoriaDominante.porcentajeTotal
+        } : null
+      },
+      filtros: {
+        fechaInicio: filtros.fechaInicio || null,
+        fechaFin: filtros.fechaFin || null,
+        ferias: filtros.ferias || [],
+        limit
+      },
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error en getCategoriasFrecuentesGlobal:', error);
+    throw error;
+  }
+};
+
+/**
+ * Comparación de tendencias entre dos ferias
+ */
+const getComparacionFeriasGlobal = async (filtros = {}) => {
+  try {
+    if (!filtros.feriaBase || !filtros.feriaComparacion) {
+      throw new Error('Se requieren feriaBase y feriaComparacion');
+    }
+
+    const dimension = filtros.dimension || 'ambas';
+
+    // Obtener información de las ferias
+    const [feriaBase, feriaComparacion] = await Promise.all([
+      Feria.findByPk(filtros.feriaBase, {
+        attributes: ['idFeria', 'nombre', 'semestre', 'año']
+      }),
+      Feria.findByPk(filtros.feriaComparacion, {
+        attributes: ['idFeria', 'nombre', 'semestre', 'año']
+      })
+    ]);
+
+    if (!feriaBase || !feriaComparacion) {
+      throw new Error('Una o ambas ferias no existen');
+    }
+
+    let comparacionPorArea = [];
+    let comparacionPorCategoria = [];
+
+    // Comparación por área
+    if (dimension === 'area' || dimension === 'ambas') {
+      const areasData = await sequelize.query(`
+        SELECT 
+          a."idArea",
+          a."nombre" as "nombreArea",
+          COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaBase THEN p."idProyecto" END) as "cantidadBase",
+          COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaComparacion THEN p."idProyecto" END) as "cantidadComparacion"
+        FROM "Area" a
+        LEFT JOIN "AreaCategoria" ac ON ac."idArea" = a."idArea"
+        LEFT JOIN "Materia" m ON m."idAreaCategoria" = ac."idAreaCategoria"
+        LEFT JOIN "GrupoMateria" gm ON gm."idMateria" = m."idMateria"
+        LEFT JOIN "Proyecto" p ON p."idGrupoMateria" = gm."idGrupoMateria"
+        LEFT JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+        LEFT JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+        WHERE t."idFeria" IN (:feriaBase, :feriaComparacion)
+        GROUP BY a."idArea", a."nombre"
+        HAVING COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaBase THEN p."idProyecto" END) > 0
+           OR COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaComparacion THEN p."idProyecto" END) > 0
+        ORDER BY ("cantidadBase" + "cantidadComparacion") DESC
+      `, {
+        replacements: {
+          feriaBase: filtros.feriaBase,
+          feriaComparacion: filtros.feriaComparacion
+        },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      comparacionPorArea = areasData.map(area => {
+        const cantidadBase = parseInt(area.cantidadBase);
+        const cantidadComparacion = parseInt(area.cantidadComparacion);
+        const variacionAbsoluta = cantidadComparacion - cantidadBase;
+        const variacionPorcentual = cantidadBase > 0 
+          ? parseFloat(((variacionAbsoluta / cantidadBase) * 100).toFixed(1))
+          : null;
+
+        return {
+          area: {
+            idArea: area.idArea,
+            nombre: area.nombreArea
+          },
+          feriaBase: {
+            cantidad: cantidadBase,
+            porcentaje: 0 // Se calculará después si es necesario
+          },
+          feriaComparacion: {
+            cantidad: cantidadComparacion,
+            porcentaje: 0
+          },
+          variacion: {
+            absoluta: variacionAbsoluta,
+            porcentual: variacionPorcentual,
+            tipo: variacionAbsoluta >= 0 ? 'incremento' : 'decremento'
+          }
+        };
+      });
+    }
+
+    // Comparación por categoría
+    if (dimension === 'categoria' || dimension === 'ambas') {
+      const categoriasData = await sequelize.query(`
+        SELECT 
+          c."idCategoria",
+          c."nombre" as "nombreCategoria",
+          COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaBase THEN p."idProyecto" END) as "cantidadBase",
+          COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaComparacion THEN p."idProyecto" END) as "cantidadComparacion"
+        FROM "Categoria" c
+        LEFT JOIN "AreaCategoria" ac ON ac."idCategoria" = c."idCategoria"
+        LEFT JOIN "Materia" m ON m."idAreaCategoria" = ac."idAreaCategoria"
+        LEFT JOIN "GrupoMateria" gm ON gm."idMateria" = m."idMateria"
+        LEFT JOIN "Proyecto" p ON p."idGrupoMateria" = gm."idGrupoMateria"
+        LEFT JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+        LEFT JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+        WHERE t."idFeria" IN (:feriaBase, :feriaComparacion)
+        GROUP BY c."idCategoria", c."nombre"
+        HAVING COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaBase THEN p."idProyecto" END) > 0
+           OR COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaComparacion THEN p."idProyecto" END) > 0
+        ORDER BY ("cantidadBase" + "cantidadComparacion") DESC
+      `, {
+        replacements: {
+          feriaBase: filtros.feriaBase,
+          feriaComparacion: filtros.feriaComparacion
+        },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      comparacionPorCategoria = categoriasData.map(categoria => {
+        const cantidadBase = parseInt(categoria.cantidadBase);
+        const cantidadComparacion = parseInt(categoria.cantidadComparacion);
+        const variacionAbsoluta = cantidadComparacion - cantidadBase;
+        const variacionPorcentual = cantidadBase > 0 
+          ? parseFloat(((variacionAbsoluta / cantidadBase) * 100).toFixed(1))
+          : null;
+
+        return {
+          categoria: {
+            idCategoria: categoria.idCategoria,
+            nombre: categoria.nombreCategoria
+          },
+          feriaBase: {
+            cantidad: cantidadBase,
+            porcentaje: 0
+          },
+          feriaComparacion: {
+            cantidad: cantidadComparacion,
+            porcentaje: 0
+          },
+          variacion: {
+            absoluta: variacionAbsoluta,
+            porcentual: variacionPorcentual,
+            tipo: variacionAbsoluta >= 0 ? 'incremento' : 'decremento'
+          }
+        };
+      });
+    }
+
+    // Calcular resumen
+    const areasConMayorCrecimiento = comparacionPorArea
+      .filter(a => a.variacion.tipo === 'incremento' && a.variacion.porcentual !== null)
+      .sort((a, b) => b.variacion.porcentual - a.variacion.porcentual)
+      .slice(0, 3)
+      .map(a => ({ nombre: a.area.nombre, variacion: a.variacion.porcentual }));
+
+    const areasConMayorDecrecimiento = comparacionPorArea
+      .filter(a => a.variacion.tipo === 'decremento' && a.variacion.porcentual !== null)
+      .sort((a, b) => a.variacion.porcentual - b.variacion.porcentual)
+      .slice(0, 3)
+      .map(a => ({ nombre: a.area.nombre, variacion: Math.abs(a.variacion.porcentual) }));
+
+    const categoriasConMayorCrecimiento = comparacionPorCategoria
+      .filter(c => c.variacion.tipo === 'incremento' && c.variacion.porcentual !== null)
+      .sort((a, b) => b.variacion.porcentual - a.variacion.porcentual)
+      .slice(0, 3)
+      .map(c => ({ nombre: c.categoria.nombre, variacion: c.variacion.porcentual }));
+
+    const categoriasConMayorDecrecimiento = comparacionPorCategoria
+      .filter(c => c.variacion.tipo === 'decremento' && c.variacion.porcentual !== null)
+      .sort((a, b) => a.variacion.porcentual - b.variacion.porcentual)
+      .slice(0, 3)
+      .map(c => ({ nombre: c.categoria.nombre, variacion: Math.abs(c.variacion.porcentual) }));
+
+    return {
+      feriaBase: {
+        idFeria: feriaBase.idFeria,
+        nombre: feriaBase.nombre,
+        semestre: feriaBase.semestre,
+        año: feriaBase.año
+      },
+      feriaComparacion: {
+        idFeria: feriaComparacion.idFeria,
+        nombre: feriaComparacion.nombre,
+        semestre: feriaComparacion.semestre,
+        año: feriaComparacion.año
+      },
+      ...(dimension === 'area' || dimension === 'ambas' ? { comparacionPorArea } : {}),
+      ...(dimension === 'categoria' || dimension === 'ambas' ? { comparacionPorCategoria } : {}),
+      resumen: {
+        areasConMayorCrecimiento,
+        areasConMayorDecrecimiento,
+        categoriasConMayorCrecimiento,
+        categoriasConMayorDecrecimiento
+      },
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error en getComparacionFeriasGlobal:', error);
+    throw error;
+  }
+};
+
+// ============================================
+// EXPORTAR MÓDULO
+// ============================================
 
 module.exports = {
   // Auxiliares
@@ -1532,5 +2458,21 @@ module.exports = {
 
   // Auxiliar
   getFeriaActualInfo,
+
+  // ============================================
+  // REPORTES GLOBALES
+  // ============================================
+  
+  // KPIs Globales
+  getProyectosPorFeriaGlobal,
+  getEstudiantesPorFeriaGlobal,
+  getJuradosPorFeriaGlobal,
+  getTutoresPorFeriaGlobal,
+
+  // Tendencias Globales
+  getAreasFrecuentesGlobal,
+  getCategoriasFrecuentesGlobal,
+  getComparacionFeriasGlobal,
 };
+
 

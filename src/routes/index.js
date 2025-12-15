@@ -100,7 +100,7 @@ router.use("/seed", dataSeederRoutes); // Asociamos la nueva ruta
 router.use("/colaboracion", colaboracionRoutes); // 👉 /api/colaboracion
 
 // Rutas de Reportes
-router.use("/reports/feria-actual", reportsRoutes); // 👉 /api/reports/feria-actual
+router.use("/reports", reportsRoutes); // 👉 /api/reports (luego /feria-actual o /global)
 
 // Ruta para manejar EstudianteProyecto
 router.use("/api/estudiante-proyecto", estudianteProyectoRoutes);
