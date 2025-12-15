@@ -220,6 +220,16 @@ const getProyectosFeriaActual = async (filtros = {}) => {
                         ? { idCategoria: filtros.categoriaId }
                         : {}),
                     },
+                    include: [
+                      {
+                        model: Area,
+                        as: "area",
+                      },
+                      {
+                        model: Categoria,
+                        as: "categoria",
+                      },
+                    ],
                   },
                   {
                     model: Semestre,
