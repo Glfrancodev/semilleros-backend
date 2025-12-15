@@ -2279,10 +2279,14 @@ const getComparacionFeriasGlobal = async (filtros = {}) => {
         LEFT JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
         LEFT JOIN "Tarea" t ON t."idTarea" = r."idTarea"
         WHERE t."idFeria" IN (:feriaBase, :feriaComparacion)
+          AND t.orden = 0
         GROUP BY a."idArea", a."nombre"
         HAVING COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaBase THEN p."idProyecto" END) > 0
            OR COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaComparacion THEN p."idProyecto" END) > 0
-        ORDER BY ("cantidadBase" + "cantidadComparacion") DESC
+        ORDER BY (
+          COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaBase THEN p."idProyecto" END) + 
+          COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaComparacion THEN p."idProyecto" END)
+        ) DESC
       `, {
         replacements: {
           feriaBase: filtros.feriaBase,
@@ -2337,10 +2341,14 @@ const getComparacionFeriasGlobal = async (filtros = {}) => {
         LEFT JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
         LEFT JOIN "Tarea" t ON t."idTarea" = r."idTarea"
         WHERE t."idFeria" IN (:feriaBase, :feriaComparacion)
+          AND t.orden = 0
         GROUP BY c."idCategoria", c."nombre"
         HAVING COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaBase THEN p."idProyecto" END) > 0
            OR COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaComparacion THEN p."idProyecto" END) > 0
-        ORDER BY ("cantidadBase" + "cantidadComparacion") DESC
+        ORDER BY (
+          COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaBase THEN p."idProyecto" END) + 
+          COUNT(DISTINCT CASE WHEN t."idFeria" = :feriaComparacion THEN p."idProyecto" END)
+        ) DESC
       `, {
         replacements: {
           feriaBase: filtros.feriaBase,
