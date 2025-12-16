@@ -3350,6 +3350,170 @@ const getControlNotasFeriaActual = async (filtros = {}) => {
   }
 };
 
+/**
+ * Reporte: Proyectos con Jurados Asignados
+ * Obtiene todos los proyectos aprobados para exposición (esFinal === true)
+ * con sus jurados asignados (hasta 3)
+ */
+const getProyectosJuradosFeriaActual = async () => {
+  try {
+    const feriaActual = await getFeriaActual();
+    const tarea0 = await getTarea0(feriaActual.idFeria);
+
+    // Obtener proyectos aprobados para exposición
+    const revisiones = await Revision.findAll({
+      where: { idTarea: tarea0.idTarea },
+      attributes: ['idProyecto'],
+      include: [
+        {
+          model: Proyecto,
+          as: 'proyecto',
+          required: true,
+          where: { esFinal: true }, // Solo proyectos aprobados para exposición
+          attributes: ['idProyecto', 'nombre', 'esFinal'],
+          include: [
+            {
+              model: GrupoMateria,
+              as: 'grupoMateria',
+              required: true,
+              attributes: ['idGrupoMateria'],
+              include: [
+                {
+                  model: Materia,
+                  as: 'materia',
+                  required: true,
+                  attributes: ['idMateria', 'nombre'],
+                  include: [
+                    {
+                      model: AreaCategoria,
+                      as: 'areaCategoria',
+                      required: true,
+                      attributes: ['idAreaCategoria'],
+                      include: [
+                        {
+                          model: Area,
+                          as: 'area',
+                          required: true,
+                          attributes: ['idArea', 'nombre'],
+                        },
+                        {
+                          model: Categoria,
+                          as: 'categoria',
+                          required: true,
+                          attributes: ['idCategoria', 'nombre'],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              model: DocenteProyecto,
+              as: 'docentesProyecto',
+              required: false, // Permitir proyectos sin jurados
+              attributes: ['idDocenteProyecto', 'idDocente'],
+              include: [
+                {
+                  model: Docente,
+                  as: 'docente',
+                  required: true,
+                  attributes: ['idDocente', 'codigoDocente'],
+                  include: [
+                    {
+                      model: Usuario,
+                      as: 'usuario',
+                      required: true,
+                      attributes: ['idUsuario', 'nombre', 'apellido', 'correo'],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    // Procesar proyectos únicos
+    const proyectosMap = new Map();
+
+    revisiones.forEach((revision) => {
+      const proyecto = revision.proyecto;
+      const idProyecto = proyecto.idProyecto;
+
+      if (!proyectosMap.has(idProyecto)) {
+        proyectosMap.set(idProyecto, {
+          idProyecto: proyecto.idProyecto,
+          nombre: proyecto.nombre,
+          area: proyecto.grupoMateria.materia.areaCategoria.area.nombre,
+          categoria: proyecto.grupoMateria.materia.areaCategoria.categoria.nombre,
+          jurados: [],
+        });
+      }
+
+      // Agregar jurados
+      if (proyecto.docentesProyecto && proyecto.docentesProyecto.length > 0) {
+        proyecto.docentesProyecto.forEach((dp) => {
+          const entry = proyectosMap.get(idProyecto);
+          if (entry.jurados.length < 3) {
+            // Máximo 3 jurados
+            entry.jurados.push({
+              idDocente: dp.docente.idDocente,
+              codigoDocente: dp.docente.codigoDocente,
+              nombre: `${dp.docente.usuario.nombre} ${dp.docente.usuario.apellido}`,
+              correo: dp.docente.usuario.correo,
+            });
+          }
+        });
+      }
+    });
+
+    // Formatear proyectos con jurado1, jurado2, jurado3
+    const proyectos = Array.from(proyectosMap.values()).map((p) => ({
+      idProyecto: p.idProyecto,
+      nombre: p.nombre,
+      area: p.area,
+      categoria: p.categoria,
+      jurado1: p.jurados[0] || null,
+      jurado2: p.jurados[1] || null,
+      jurado3: p.jurados[2] || null,
+    }));
+
+    // Calcular estadísticas
+    const totalProyectos = proyectos.length;
+    const proyectosSinJurados = proyectos.filter(
+      (p) => !p.jurado1 && !p.jurado2 && !p.jurado3
+    ).length;
+    const proyectosCon1Jurado = proyectos.filter(
+      (p) => p.jurado1 && !p.jurado2 && !p.jurado3
+    ).length;
+    const proyectosCon2Jurados = proyectos.filter(
+      (p) => p.jurado1 && p.jurado2 && !p.jurado3
+    ).length;
+    const proyectosCon3Jurados = proyectos.filter(
+      (p) => p.jurado1 && p.jurado2 && p.jurado3
+    ).length;
+    const proyectosConJurados = totalProyectos - proyectosSinJurados;
+
+    return {
+      proyectos,
+      estadisticas: {
+        totalProyectos,
+        proyectosConJurados,
+        proyectosSinJurados,
+        proyectosCon1Jurado,
+        proyectosCon2Jurados,
+        proyectosCon3Jurados,
+      },
+      feriaActual: formatFeriaInfo(feriaActual),
+    };
+  } catch (error) {
+    console.error('Error en getProyectosJuradosFeriaActual:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   // ============================================
   // FERIA ACTUAL
@@ -3377,6 +3541,7 @@ module.exports = {
 
   // Reportes Descargables
   getControlNotasFeriaActual,
+  getProyectosJuradosFeriaActual,
 
   // ============================================
   // REPORTES GLOBALES

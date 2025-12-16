@@ -90,6 +90,9 @@ router.get("/feria-actual/info", reportsController.getFeriaActualInfo);
 // Control de Notas: Matriz de proyectos x tareas con calificaciones
 router.get("/feria-actual/control-notas", reportsController.getControlNotasFeriaActual);
 
+// Proyectos con Jurados: Lista de proyectos aprobados con sus jurados asignados
+router.get("/feria-actual/proyectos-jurados", reportsController.getProyectosJuradosFeriaActual);
+
 
 // ============================================
 // REPORTES GLOBALES - KPIs

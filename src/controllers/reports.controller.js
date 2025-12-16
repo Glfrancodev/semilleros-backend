@@ -1001,6 +1001,37 @@ const getControlNotasFeriaActual = async (req, res) => {
   }
 };
 
+/**
+ * Reporte Descargable: Proyectos con Jurados Asignados
+ */
+const getProyectosJuradosFeriaActual = async (req, res) => {
+  try {
+    const data = await reportsService.getProyectosJuradosFeriaActual();
+
+    return res.success(
+      "Proyectos con jurados obtenidos exitosamente",
+      {
+        ...data,
+        timestamp: new Date().toISOString(),
+      }
+    );
+  } catch (err) {
+    console.error("Error al obtener proyectos con jurados:", err);
+
+    if (err.message === "No hay una feria activa en este momento") {
+      return res.error(err.message, 404, {
+        code: "NO_ACTIVE_FERIA",
+        details: err.message,
+      });
+    }
+
+    return res.error("Error al obtener proyectos con jurados", 500, {
+      code: "INTERNAL_ERROR",
+      details: err.message,
+    });
+  }
+};
+
 module.exports = {
   // ============================================
   // FERIA ACTUAL
@@ -1028,6 +1059,7 @@ module.exports = {
 
   // Reportes Descargables
   getControlNotasFeriaActual,
+  getProyectosJuradosFeriaActual,
 
   // ============================================
   // REPORTES GLOBALES
