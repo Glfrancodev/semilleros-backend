@@ -3514,6 +3514,144 @@ const getProyectosJuradosFeriaActual = async () => {
   }
 };
 
+/**
+ * Obtener calificaciones finales de todos los proyectos aprobados para exposición
+ * Devuelve las 3 calificaciones de jurados y el promedio final
+ */
+const getCalificacionesFinalesFeriaActual = async () => {
+  try {
+    // 1. Obtener feria actual
+    const feriaActual = await getFeriaActual();
+    if (!feriaActual) {
+      throw new Error('No hay feria activa');
+    }
+
+    // 2. Obtener Tarea 0 (inscripción)
+    const tarea0 = await getTarea0(feriaActual.idFeria);
+
+    // 3. Obtener proyectos con esFinal = true de la feria actual
+    const proyectos = await Proyecto.findAll({
+      include: [
+        {
+          model: Revision,
+          as: 'revisiones',
+          where: { idTarea: tarea0.idTarea },
+          attributes: [],
+          required: true,
+        },
+        {
+          model: GrupoMateria,
+          as: 'grupoMateria',
+          include: [
+            {
+              model: Materia,
+              as: 'materia',
+              include: [
+                {
+                  model: AreaCategoria,
+                  as: 'areaCategoria',
+                  include: [
+                    {
+                      model: Area,
+                      as: 'area',
+                      attributes: ['nombre'],
+                    },
+                    {
+                      model: Categoria,
+                      as: 'categoria',
+                      attributes: ['nombre'],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          model: DocenteProyecto,
+          as: 'docentesProyecto',
+          include: [
+            {
+              model: Calificacion,
+              as: 'calificaciones',
+              where: { calificado: true },
+              required: false,
+            },
+          ],
+          required: false,
+        },
+      ],
+      where: { esFinal: true },
+      order: [['nombre', 'ASC']],
+    });
+
+    // 4. Procesar cada proyecto para obtener las calificaciones
+    const proyectosConCalificaciones = proyectos.map(proyecto => {
+      const area = proyecto.grupoMateria?.materia?.areaCategoria?.area?.nombre || 'Sin área';
+      const categoria = proyecto.grupoMateria?.materia?.areaCategoria?.categoria?.nombre || 'Sin categoría';
+
+      // Obtener los 3 jurados y sus calificaciones
+      const jurados = proyecto.docentesProyecto || [];
+      
+      // Inicializar las 3 calificaciones
+      const calificaciones = ['Pendiente', 'Pendiente', 'Pendiente'];
+      const notasNumericas = [];
+
+      // Procesar cada jurado (máximo 3)
+      jurados.slice(0, 3).forEach((jurado, index) => {
+        if (jurado.calificaciones && jurado.calificaciones.length > 0) {
+          // Sumar todas las calificaciones de este jurado
+          const totalPuntaje = jurado.calificaciones.reduce(
+            (sum, cal) => sum + cal.puntajeObtenido,
+            0
+          );
+          calificaciones[index] = totalPuntaje;
+          notasNumericas.push(totalPuntaje);
+        }
+      });
+
+      // Calcular nota final (promedio de las 3 calificaciones)
+      let notaFinal = 'Pendiente';
+      if (notasNumericas.length === 3) {
+        // Solo calcular promedio si los 3 jurados han calificado
+        const promedio = notasNumericas.reduce((sum, nota) => sum + nota, 0) / 3;
+        notaFinal = Math.round(promedio * 100) / 100; // Redondear a 2 decimales
+      }
+
+      return {
+        idProyecto: proyecto.idProyecto,
+        nombre: proyecto.nombre,
+        area,
+        categoria,
+        calificacion1: calificaciones[0],
+        calificacion2: calificaciones[1],
+        calificacion3: calificaciones[2],
+        notaFinal,
+      };
+    });
+
+    // 5. Calcular estadísticas
+    const totalProyectos = proyectosConCalificaciones.length;
+    const proyectosCalificados = proyectosConCalificaciones.filter(
+      p => typeof p.notaFinal === 'number'
+    ).length;
+    const proyectosPendientes = totalProyectos - proyectosCalificados;
+
+    return {
+      proyectos: proyectosConCalificaciones,
+      estadisticas: {
+        totalProyectos,
+        proyectosCalificados,
+        proyectosPendientes,
+      },
+      feriaActual: formatFeriaInfo(feriaActual),
+    };
+  } catch (error) {
+    console.error('Error en getCalificacionesFinalesFeriaActual:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   // ============================================
   // FERIA ACTUAL
@@ -3542,6 +3680,7 @@ module.exports = {
   // Reportes Descargables
   getControlNotasFeriaActual,
   getProyectosJuradosFeriaActual,
+  getCalificacionesFinalesFeriaActual,
 
   // ============================================
   // REPORTES GLOBALES

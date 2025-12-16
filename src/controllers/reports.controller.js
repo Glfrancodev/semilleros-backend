@@ -1032,6 +1032,37 @@ const getProyectosJuradosFeriaActual = async (req, res) => {
   }
 };
 
+/**
+ * Reporte Descargable: Calificaciones Finales de Proyectos
+ */
+const getCalificacionesFinalesFeriaActual = async (req, res) => {
+  try {
+    const data = await reportsService.getCalificacionesFinalesFeriaActual();
+    
+    return res.success(
+      'Calificaciones finales obtenidas exitosamente',
+      {
+        ...data,
+        timestamp: new Date().toISOString(),
+      }
+    );
+  } catch (err) {
+    console.error('Error al obtener calificaciones finales:', err);
+    
+    if (err.message === 'No hay feria activa') {
+      return res.error(err.message, 404, {
+        code: 'NO_ACTIVE_FERIA',
+        details: err.message,
+      });
+    }
+    
+    return res.error('Error al obtener las calificaciones finales', 500, {
+      code: 'INTERNAL_ERROR',
+      details: err.message,
+    });
+  }
+};
+
 module.exports = {
   // ============================================
   // FERIA ACTUAL
@@ -1060,6 +1091,7 @@ module.exports = {
   // Reportes Descargables
   getControlNotasFeriaActual,
   getProyectosJuradosFeriaActual,
+  getCalificacionesFinalesFeriaActual,
 
   // ============================================
   // REPORTES GLOBALES

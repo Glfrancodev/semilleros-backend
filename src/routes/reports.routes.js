@@ -93,6 +93,9 @@ router.get("/feria-actual/control-notas", reportsController.getControlNotasFeria
 // Proyectos con Jurados: Lista de proyectos aprobados con sus jurados asignados
 router.get("/feria-actual/proyectos-jurados", reportsController.getProyectosJuradosFeriaActual);
 
+// Calificaciones Finales: Calificaciones de jurados y promedio final de proyectos aprobados
+router.get("/feria-actual/calificaciones-finales", reportsController.getCalificacionesFinalesFeriaActual);
+
 
 // ============================================
 // REPORTES GLOBALES - KPIs
