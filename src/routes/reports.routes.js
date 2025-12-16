@@ -96,6 +96,12 @@ router.get("/feria-actual/proyectos-jurados", reportsController.getProyectosJura
 // Calificaciones Finales: Calificaciones de jurados y promedio final de proyectos aprobados
 router.get("/feria-actual/calificaciones-finales", reportsController.getCalificacionesFinalesFeriaActual);
 
+// Proyectos con Integrantes: Lista de proyectos con líder e integrantes
+router.get("/feria-actual/proyectos-integrantes", reportsController.getProyectosIntegrantesFeriaActual);
+
+// Eventos con Inscritos: Lista de eventos activos con estudiantes inscritos
+router.get("/feria-actual/eventos-inscritos", reportsController.getEventosInscritosFeriaActual);
+
 
 // ============================================
 // REPORTES GLOBALES - KPIs

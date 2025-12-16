@@ -1063,6 +1063,68 @@ const getCalificacionesFinalesFeriaActual = async (req, res) => {
   }
 };
 
+/**
+ * Reporte Descargable: Proyectos con Integrantes
+ */
+const getProyectosIntegrantesFeriaActual = async (req, res) => {
+  try {
+    const data = await reportsService.getProyectosIntegrantesFeriaActual();
+    
+    return res.success(
+      'Proyectos con integrantes obtenidos exitosamente',
+      {
+        ...data,
+        timestamp: new Date().toISOString(),
+      }
+    );
+  } catch (err) {
+    console.error('Error al obtener proyectos con integrantes:', err);
+    
+    if (err.message === 'No hay feria activa') {
+      return res.error(err.message, 404, {
+        code: 'NO_ACTIVE_FERIA',
+        details: err.message,
+      });
+    }
+    
+    return res.error('Error al obtener proyectos con integrantes', 500, {
+      code: 'INTERNAL_ERROR',
+      details: err.message,
+    });
+  }
+};
+
+/**
+ * Reporte Descargable: Eventos con Inscritos
+ */
+const getEventosInscritosFeriaActual = async (req, res) => {
+  try {
+    const data = await reportsService.getEventosInscritosFeriaActual();
+    
+    return res.success(
+      'Eventos con inscritos obtenidos exitosamente',
+      {
+        ...data,
+        timestamp: new Date().toISOString(),
+      }
+    );
+  } catch (err) {
+    console.error('Error al obtener eventos con inscritos:', err);
+    
+    if (err.message === 'No hay feria activa') {
+      return res.error(err.message, 404, {
+        code: 'NO_ACTIVE_FERIA',
+        details: err.message,
+      });
+    }
+    
+    return res.error('Error al obtener eventos con inscritos', 500, {
+      code: 'INTERNAL_ERROR',
+      details: err.message,
+    });
+  }
+};
+
 module.exports = {
   // ============================================
   // FERIA ACTUAL
@@ -1092,6 +1154,8 @@ module.exports = {
   getControlNotasFeriaActual,
   getProyectosJuradosFeriaActual,
   getCalificacionesFinalesFeriaActual,
+  getProyectosIntegrantesFeriaActual,
+  getEventosInscritosFeriaActual,
 
   // ============================================
   // REPORTES GLOBALES

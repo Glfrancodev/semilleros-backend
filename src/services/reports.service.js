@@ -3652,6 +3652,221 @@ const getCalificacionesFinalesFeriaActual = async () => {
   }
 };
 
+/**
+ * Obtener proyectos con todos sus integrantes (líder + miembros)
+ */
+const getProyectosIntegrantesFeriaActual = async () => {
+  try {
+    // 1. Obtener feria actual
+    const feriaActual = await getFeriaActual();
+    if (!feriaActual) {
+      throw new Error('No hay feria activa');
+    }
+
+    // 2. Obtener Tarea 0 (inscripción)
+    const tarea0 = await getTarea0(feriaActual.idFeria);
+
+    // 3. Obtener proyectos de la feria actual
+    const proyectos = await Proyecto.findAll({
+      include: [
+        {
+          model: Revision,
+          as: 'revisiones',
+          where: { idTarea: tarea0.idTarea },
+          attributes: [],
+          required: true,
+        },
+        {
+          model: GrupoMateria,
+          as: 'grupoMateria',
+          include: [
+            {
+              model: Materia,
+              as: 'materia',
+              include: [
+                {
+                  model: AreaCategoria,
+                  as: 'areaCategoria',
+                  include: [
+                    {
+                      model: Area,
+                      as: 'area',
+                      attributes: ['nombre'],
+                    },
+                    {
+                      model: Categoria,
+                      as: 'categoria',
+                      attributes: ['nombre'],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          model: EstudianteProyecto,
+          as: 'estudiantesProyecto',
+          where: { invitacion: true },
+          required: false,
+          include: [
+            {
+              model: Estudiante,
+              as: 'estudiante',
+              include: [
+                {
+                  model: Usuario,
+                  as: 'usuario',
+                  attributes: ['nombre', 'apellido'],
+                },
+              ],
+              attributes: ['codigoEstudiante'],
+            },
+          ],
+        },
+      ],
+      order: [['nombre', 'ASC']],
+    });
+
+    // 4. Procesar cada proyecto para separar líder de integrantes
+    let totalEstudiantes = 0;
+    const proyectosConIntegrantes = proyectos.map(proyecto => {
+      const area = proyecto.grupoMateria?.materia?.areaCategoria?.area?.nombre || 'Sin área';
+      const categoria = proyecto.grupoMateria?.materia?.areaCategoria?.categoria?.nombre || 'Sin categoría';
+
+      const estudiantes = proyecto.estudiantesProyecto || [];
+      
+      // Separar líder de integrantes
+      const liderData = estudiantes.find(ep => ep.esLider);
+      const integrantesData = estudiantes.filter(ep => !ep.esLider);
+
+      const lider = liderData ? {
+        nombre: `${liderData.estudiante.usuario.nombre} ${liderData.estudiante.usuario.apellido}`,
+        codigo: liderData.estudiante.codigoEstudiante,
+      } : null;
+
+      const integrantes = integrantesData.map(ep => ({
+        nombre: `${ep.estudiante.usuario.nombre} ${ep.estudiante.usuario.apellido}`,
+        codigo: ep.estudiante.codigoEstudiante,
+      }));
+
+      const totalIntegrantes = estudiantes.length;
+      totalEstudiantes += totalIntegrantes;
+
+      return {
+        idProyecto: proyecto.idProyecto,
+        nombre: proyecto.nombre,
+        area,
+        categoria,
+        lider,
+        integrantes,
+        totalIntegrantes,
+      };
+    });
+
+    // 5. Calcular estadísticas
+    const totalProyectos = proyectosConIntegrantes.length;
+    const promedioIntegrantesPorProyecto = totalProyectos > 0 
+      ? Math.round((totalEstudiantes / totalProyectos) * 100) / 100 
+      : 0;
+
+    return {
+      proyectos: proyectosConIntegrantes,
+      estadisticas: {
+        totalProyectos,
+        totalEstudiantes,
+        promedioIntegrantesPorProyecto,
+      },
+      feriaActual: formatFeriaInfo(feriaActual),
+    };
+  } catch (error) {
+    console.error('Error en getProyectosIntegrantesFeriaActual:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtener eventos activos con lista de inscritos
+ */
+const getEventosInscritosFeriaActual = async () => {
+  try {
+    // 1. Obtener feria actual (solo para info de respuesta)
+    const feriaActual = await getFeriaActual();
+    if (!feriaActual) {
+      throw new Error('No hay feria activa');
+    }
+
+    // 2. Obtener TODOS los eventos activos (Evento no se relaciona con Feria)
+    const eventos = await Evento.findAll({
+      where: { estaActivo: true },
+      include: [
+        {
+          model: EstudianteEvento,
+          as: 'estudiantesEventos',
+          required: false,
+          include: [
+            {
+              model: Estudiante,
+              as: 'estudiante',
+              include: [
+                {
+                  model: Usuario,
+                  as: 'usuario',
+                  attributes: ['nombre', 'apellido'],
+                },
+              ],
+              attributes: ['idEstudiante', 'codigoEstudiante'],
+            },
+          ],
+        },
+      ],
+      order: [['fechaProgramada', 'ASC']],
+    });
+
+    // 3. Procesar cada evento
+    let totalInscritos = 0;
+    const eventosConInscritos = eventos.map(evento => {
+      const inscritos = (evento.estudiantesEventos || []).map(ee => {
+        totalInscritos++;
+
+        return {
+          nombre: `${ee.estudiante.usuario.nombre} ${ee.estudiante.usuario.apellido}`,
+          codigo: ee.estudiante.codigoEstudiante,
+        };
+      });
+
+      return {
+        idEvento: evento.idEvento,
+        nombre: evento.nombre,
+        descripcion: evento.descripcion,
+        fechaProgramada: evento.fechaProgramada,
+        capacidadMaxima: evento.capacidadMaxima,
+        inscritos,
+        totalInscritos: inscritos.length,
+      };
+    });
+
+    // 4. Calcular estadísticas
+    const totalEventos = eventosConInscritos.length;
+    const promedioInscritosPorEvento = totalEventos > 0
+      ? Math.round((totalInscritos / totalEventos) * 100) / 100
+      : 0;
+
+    return {
+      eventos: eventosConInscritos,
+      estadisticas: {
+        totalEventos,
+        totalInscritos,
+        promedioInscritosPorEvento,
+      },
+      feriaActual: formatFeriaInfo(feriaActual),
+    };
+  } catch (error) {
+    console.error('Error en getEventosInscritosFeriaActual:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   // ============================================
   // FERIA ACTUAL
@@ -3681,6 +3896,8 @@ module.exports = {
   getControlNotasFeriaActual,
   getProyectosJuradosFeriaActual,
   getCalificacionesFinalesFeriaActual,
+  getProyectosIntegrantesFeriaActual,
+  getEventosInscritosFeriaActual,
 
   // ============================================
   // REPORTES GLOBALES
