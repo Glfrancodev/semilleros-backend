@@ -560,10 +560,11 @@ const proyectoService = {
           SELECT DISTINCT p."idProyecto"
           FROM "Proyecto" p
           INNER JOIN "EstudianteProyecto" ep ON ep."idProyecto" = p."idProyecto"
-          INNER JOIN "GrupoMateria" gm ON gm."idGrupoMateria" = p."idGrupoMateria"
+          INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+          INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
           WHERE ep."idEstudiante" = :idEstudiante
             AND ep."esLider" = true
-            AND gm."idFeria" = :idFeria
+            AND t."idFeria" = :idFeria
           `,
           {
             replacements: {
