@@ -1712,8 +1712,42 @@ const proyectoService = {
         return [];
       }
 
+      // Función recursiva para extraer IDs de proyectos de estructura anidada
+      const extractProjectIds = (obj, path = '') => {
+        const ids = [];
+        
+        if (!obj || typeof obj !== 'object') {
+          return ids;
+        }
+
+        // Si encontramos un campo 'proyecto' con idProyecto, lo extraemos
+        if (obj.proyecto && obj.proyecto.idProyecto) {
+          console.log(`  ✅ ID Proyecto encontrado en ${path}:`, obj.proyecto.idProyecto);
+          ids.push({
+            idProyecto: obj.proyecto.idProyecto,
+            path: path
+          });
+          return ids;
+        }
+
+        // Si es un array, procesamos cada elemento
+        if (Array.isArray(obj)) {
+          obj.forEach((item, index) => {
+            ids.push(...extractProjectIds(item, `${path}[${index}]`));
+          });
+        } else {
+          // Si es un objeto, procesamos cada propiedad
+          Object.keys(obj).forEach(key => {
+            const newPath = path ? `${path}.${key}` : key;
+            ids.push(...extractProjectIds(obj[key], newPath));
+          });
+        }
+
+        return ids;
+      };
+
       // Extraer todos los IDs de proyectos ganadores
-      const idsProyectosGanadores = new Set();
+      const proyectosConInfo = [];
       feriasFinalizadas.forEach((feria) => {
         console.log(`🏆 Feria ${feria.nombre}:`, {
           ganadores: feria.ganadores,
@@ -1722,31 +1756,34 @@ const proyectoService = {
         });
 
         if (feria.ganadores) {
-          // Manejar diferentes estructuras del campo ganadores
-          let ganadoresArray = [];
-          
-          if (Array.isArray(feria.ganadores)) {
-            ganadoresArray = feria.ganadores;
-          } else if (typeof feria.ganadores === 'object') {
-            // Si es un objeto, intentar extraer los valores
-            ganadoresArray = Object.values(feria.ganadores);
-          }
-
-          ganadoresArray.forEach((ganador) => {
-            console.log("  Ganador:", ganador);
-            // Intentar diferentes formas de obtener el ID del proyecto
-            const idProyecto = ganador?.idProyecto || ganador?.proyecto?.idProyecto || ganador?.proyecto;
-            if (idProyecto) {
-              console.log("  ✅ ID Proyecto encontrado:", idProyecto);
-              idsProyectosGanadores.add(idProyecto);
+          const proyectosEncontrados = extractProjectIds(feria.ganadores);
+          proyectosEncontrados.forEach(({ idProyecto, path }) => {
+            // Extraer información del puesto desde el path
+            let puesto = null;
+            if (path.includes('primerLugar')) {
+              puesto = 1;
+            } else if (path.includes('segundoLugar')) {
+              puesto = 2;
+            } else if (path.includes('tercerLugar')) {
+              puesto = 3;
             }
+
+            proyectosConInfo.push({
+              idProyecto,
+              feriaId: feria.idFeria,
+              feriaNombre: `${feria.nombre} ${feria.año}-${feria.semestre}`,
+              puesto,
+              path
+            });
           });
         }
       });
 
-      console.log("📋 IDs de proyectos ganadores:", Array.from(idsProyectosGanadores));
+      const idsProyectosGanadores = [...new Set(proyectosConInfo.map(p => p.idProyecto))];
+      console.log("📋 IDs de proyectos ganadores:", idsProyectosGanadores);
+      console.log("📋 Proyectos con info:", proyectosConInfo);
 
-      if (idsProyectosGanadores.size === 0) {
+      if (idsProyectosGanadores.length === 0) {
         console.log("⚠️ No se encontraron IDs de proyectos ganadores");
         return [];
       }
@@ -1796,31 +1833,10 @@ const proyectoService = {
             );
           }
 
-          // Encontrar en qué feria ganó
-          let feriaGanadora = null;
-          let puesto = null;
-          for (const feria of feriasFinalizadas) {
-            if (feria.ganadores) {
-              let ganadoresArray = [];
-              
-              if (Array.isArray(feria.ganadores)) {
-                ganadoresArray = feria.ganadores;
-              } else if (typeof feria.ganadores === 'object') {
-                ganadoresArray = Object.values(feria.ganadores);
-              }
-
-              const ganador = ganadoresArray.find((g) => {
-                const idProyecto = g?.idProyecto || g?.proyecto?.idProyecto || g?.proyecto;
-                return idProyecto === proyecto.idProyecto;
-              });
-
-              if (ganador) {
-                feriaGanadora = `${feria.nombre} ${feria.año}-${feria.semestre}`;
-                puesto = ganador.puesto || ganador.lugar || ganador.posicion || null;
-                break;
-              }
-            }
-          }
+          // Encontrar información del proyecto ganador
+          const infoGanador = proyectosConInfo.find(p => p.idProyecto === proyecto.idProyecto);
+          const feriaGanadora = infoGanador?.feriaNombre || null;
+          const puesto = infoGanador?.puesto || null;
 
           return {
             idProyecto: proyecto.idProyecto,
