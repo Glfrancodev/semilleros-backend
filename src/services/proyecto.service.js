@@ -634,7 +634,7 @@ const proyectoService = {
 
       // Mapear los datos a formato simplificado
       const proyectosFormateados = await Promise.all(
-        estudianteProyectos.map(async (ep) => {
+        proyectosPasados.map(async (ep) => {
           const proyecto = ep.proyecto;
           const grupoMateria = proyecto.grupoMateria;
 
