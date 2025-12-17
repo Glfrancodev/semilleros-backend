@@ -534,6 +534,8 @@ const proyectoService = {
    */
   async obtenerMisProyectosPasados(idUsuario) {
     try {
+      const { Op } = require("sequelize");
+      
       // Obtener el estudiante del usuario
       const estudiante = await db.Estudiante.findOne({
         where: { idUsuario },
@@ -561,8 +563,8 @@ const proyectoService = {
           INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
           INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
           WHERE ep."idEstudiante" = :idEstudiante
-            AND ep."invitacion" = true
             AND ep."esLider" = true
+            AND ep."invitacion" IS NULL
             AND t."idFeria" = :idFeria
             AND t."orden" = 0
           `,
@@ -578,15 +580,13 @@ const proyectoService = {
         idsProyectosActivos = proyectosActivos.map((p) => p.idProyecto);
       }
 
-      // Obtener todos los proyectos del estudiante excluyendo los activos
-      const whereClause = {
-        idEstudiante: estudiante.idEstudiante,
-        invitacion: true,
-        esLider: true,
-      };
-
-      const estudianteProyectos = await EstudianteProyecto.findAll({
-        where: whereClause,
+      // Obtener proyectos pasados (todos menos los activos)
+      const proyectosPasados = await EstudianteProyecto.findAll({
+        where: {
+          idEstudiante: estudiante.idEstudiante,
+          esLider: true,
+          invitacion: null,
+        },
         include: [
           {
             model: Proyecto,
@@ -595,7 +595,7 @@ const proyectoService = {
               idsProyectosActivos.length > 0
                 ? {
                     idProyecto: {
-                      [db.Sequelize.Op.notIn]: idsProyectosActivos,
+                      [Op.notIn]: idsProyectosActivos,
                     },
                   }
                 : {},
