@@ -1696,12 +1696,14 @@ const proyectoService = {
    */
   async obtenerProyectosGanadores() {
     try {
+      const { Op } = require("sequelize");
+      
       // Obtener ferias finalizadas que tienen ganadores
       const feriasFinalizadas = await db.Feria.findAll({
         where: {
           estado: "Finalizado",
           ganadores: {
-            [db.Sequelize.Op.ne]: null,
+            [Op.ne]: null,
           },
         },
         attributes: ["idFeria", "ganadores", "nombre", "año", "semestre"],
