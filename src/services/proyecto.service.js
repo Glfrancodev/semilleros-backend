@@ -585,7 +585,6 @@ const proyectoService = {
         where: {
           idEstudiante: estudiante.idEstudiante,
           esLider: true,
-          invitacion: null,
         },
         include: [
           {
