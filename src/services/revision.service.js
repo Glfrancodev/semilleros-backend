@@ -224,8 +224,8 @@ const revisionService = {
       ) {
         const proyecto = await Proyecto.findByPk(revision.idProyecto);
         if (proyecto) {
-          // Aprobar si el puntaje es mayor a 0, rechazar si es 0
-          const estaAprobado = data.puntaje > 0;
+          // Aprobar si el puntaje es >= 51, rechazar si es < 51
+          const estaAprobado = data.puntaje >= 51;
           await proyecto.update({
             estaAprobado: estaAprobado,
             fechaActualizacion: new Date(),
