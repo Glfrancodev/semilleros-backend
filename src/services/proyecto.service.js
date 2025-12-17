@@ -553,20 +553,17 @@ const proyectoService = {
       let idsProyectosActivos = [];
 
       if (feriaActiva) {
-        // Si hay feria activa, obtener los IDs de proyectos activos
+        // Si hay feria activa, obtener TODOS los IDs de proyectos de la feria activa
         const { QueryTypes } = require("sequelize");
         const proyectosActivos = await db.sequelize.query(
           `
           SELECT DISTINCT p."idProyecto"
           FROM "Proyecto" p
           INNER JOIN "EstudianteProyecto" ep ON ep."idProyecto" = p."idProyecto"
-          INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
-          INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+          INNER JOIN "GrupoMateria" gm ON gm."idGrupoMateria" = p."idGrupoMateria"
           WHERE ep."idEstudiante" = :idEstudiante
             AND ep."esLider" = true
-            AND ep."invitacion" IS NULL
-            AND t."idFeria" = :idFeria
-            AND t."orden" = 0
+            AND gm."idFeria" = :idFeria
           `,
           {
             replacements: {
