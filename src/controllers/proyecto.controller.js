@@ -614,6 +614,46 @@ const proyectoController = {
       });
     }
   },
+
+  /**
+   * GET /api/proyectos/publicos-actuales
+   * Obtener proyectos públicos de la feria activa
+   */
+  async obtenerProyectosPublicosActuales(req, res) {
+    try {
+      const proyectos = await proyectoService.obtenerProyectosPublicosActuales();
+      return res.success("Proyectos públicos actuales obtenidos exitosamente", {
+        count: proyectos.length,
+        items: proyectos,
+      });
+    } catch (error) {
+      console.error("Error al obtener proyectos públicos actuales:", error);
+      return res.error("Error al obtener los proyectos públicos", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/proyectos/ganadores
+   * Obtener proyectos ganadores de ferias finalizadas
+   */
+  async obtenerProyectosGanadores(req, res) {
+    try {
+      const proyectos = await proyectoService.obtenerProyectosGanadores();
+      return res.success("Proyectos ganadores obtenidos exitosamente", {
+        count: proyectos.length,
+        items: proyectos,
+      });
+    } catch (error) {
+      console.error("Error al obtener proyectos ganadores:", error);
+      return res.error("Error al obtener los proyectos ganadores", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
 };
 
 module.exports = proyectoController;

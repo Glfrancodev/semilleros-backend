@@ -56,6 +56,18 @@ router.get(
   proyectoController.obtenerMisProyectosInvitadosPasados
 );
 
+// GET /api/proyectos/publicos-actuales - Obtener proyectos públicos de la feria activa
+router.get(
+  "/publicos-actuales",
+  proyectoController.obtenerProyectosPublicosActuales
+);
+
+// GET /api/proyectos/ganadores - Obtener proyectos ganadores de ferias finalizadas
+router.get(
+  "/ganadores",
+  proyectoController.obtenerProyectosGanadores
+);
+
 // GET /api/proyectos/aprobados-feria - Obtener proyectos aprobados para feria (DEBE IR ANTES de /:idProyecto)
 router.get(
   "/aprobados-feria",

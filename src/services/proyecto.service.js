@@ -1596,6 +1596,218 @@ const proyectoService = {
       throw error;
     }
   },
+
+  /**
+   * Obtener proyectos públicos de la feria activa
+   * Retorna proyectos con esPublico=true que pertenecen a la feria activa
+   */
+  async obtenerProyectosPublicosActuales() {
+    try {
+      // Obtener la feria activa
+      const feriaActiva = await db.Feria.findOne({
+        where: { estado: "Activo" },
+      });
+
+      if (!feriaActiva) {
+        return [];
+      }
+
+      // Obtener proyectos públicos que tienen revisión en la feria activa
+      const { QueryTypes } = require("sequelize");
+      const proyectosPublicos = await db.sequelize.query(
+        `
+        SELECT DISTINCT p."idProyecto", p.nombre, p.descripcion, p."fechaCreacion"
+        FROM "Proyecto" p
+        INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+        INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+        WHERE p."esPublico" = true
+          AND t."idFeria" = :idFeria
+          AND t."orden" = 0
+        ORDER BY p."fechaCreacion" DESC
+        `,
+        {
+          replacements: {
+            idFeria: feriaActiva.idFeria,
+          },
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      // Obtener datos completos de cada proyecto
+      const proyectosFormateados = await Promise.all(
+        proyectosPublicos.map(async (p) => {
+          const proyecto = await Proyecto.findByPk(p.idProyecto, {
+            include: [
+              {
+                model: GrupoMateria,
+                as: "grupoMateria",
+                include: [
+                  {
+                    model: db.Materia,
+                    as: "materia",
+                    attributes: ["nombre"],
+                  },
+                  {
+                    model: db.Grupo,
+                    as: "grupo",
+                    attributes: ["sigla"],
+                  },
+                ],
+              },
+            ],
+          });
+
+          // Obtener logo del proyecto
+          let urlLogo = null;
+          try {
+            const logo = await archivoService.obtenerArchivoPorTipo(
+              p.idProyecto,
+              "logo"
+            );
+            urlLogo = logo ? logo.urlFirmada : null;
+          } catch (error) {
+            console.log(`No se encontró logo para proyecto ${p.idProyecto}`);
+          }
+
+          return {
+            idProyecto: proyecto.idProyecto,
+            nombre: proyecto.nombre,
+            descripcion: proyecto.descripcion,
+            materia: proyecto.grupoMateria?.materia?.nombre || "Sin materia",
+            grupo: proyecto.grupoMateria?.grupo?.sigla || "Sin grupo",
+            urlLogo,
+            estaAprobado: proyecto.estaAprobado,
+            esFinal: proyecto.esFinal,
+            fechaCreacion: proyecto.fechaCreacion,
+          };
+        })
+      );
+
+      return proyectosFormateados;
+    } catch (error) {
+      console.error("Error en obtenerProyectosPublicosActuales:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener proyectos ganadores de ferias finalizadas
+   * Retorna proyectos que están en el campo ganadores de ferias con estado Finalizado
+   */
+  async obtenerProyectosGanadores() {
+    try {
+      // Obtener ferias finalizadas que tienen ganadores
+      const feriasFinalizadas = await db.Feria.findAll({
+        where: {
+          estado: "Finalizado",
+          ganadores: {
+            [db.Sequelize.Op.ne]: null,
+          },
+        },
+        attributes: ["idFeria", "ganadores", "nombre", "año", "semestre"],
+      });
+
+      if (feriasFinalizadas.length === 0) {
+        return [];
+      }
+
+      // Extraer todos los IDs de proyectos ganadores
+      const idsProyectosGanadores = new Set();
+      feriasFinalizadas.forEach((feria) => {
+        if (feria.ganadores && Array.isArray(feria.ganadores)) {
+          feria.ganadores.forEach((ganador) => {
+            if (ganador.idProyecto) {
+              idsProyectosGanadores.add(ganador.idProyecto);
+            }
+          });
+        }
+      });
+
+      if (idsProyectosGanadores.size === 0) {
+        return [];
+      }
+
+      // Obtener los proyectos ganadores
+      const proyectos = await Proyecto.findAll({
+        where: {
+          idProyecto: Array.from(idsProyectosGanadores),
+        },
+        include: [
+          {
+            model: GrupoMateria,
+            as: "grupoMateria",
+            include: [
+              {
+                model: db.Materia,
+                as: "materia",
+                attributes: ["nombre"],
+              },
+              {
+                model: db.Grupo,
+                as: "grupo",
+                attributes: ["sigla"],
+              },
+            ],
+          },
+        ],
+        order: [["fechaCreacion", "DESC"]],
+      });
+
+      // Formatear proyectos con información adicional
+      const proyectosFormateados = await Promise.all(
+        proyectos.map(async (proyecto) => {
+          // Obtener logo del proyecto
+          let urlLogo = null;
+          try {
+            const logo = await archivoService.obtenerArchivoPorTipo(
+              proyecto.idProyecto,
+              "logo"
+            );
+            urlLogo = logo ? logo.urlFirmada : null;
+          } catch (error) {
+            console.log(
+              `No se encontró logo para proyecto ${proyecto.idProyecto}`
+            );
+          }
+
+          // Encontrar en qué feria ganó
+          let feriaGanadora = null;
+          let puesto = null;
+          for (const feria of feriasFinalizadas) {
+            if (feria.ganadores && Array.isArray(feria.ganadores)) {
+              const ganador = feria.ganadores.find(
+                (g) => g.idProyecto === proyecto.idProyecto
+              );
+              if (ganador) {
+                feriaGanadora = `${feria.nombre} ${feria.año}-${feria.semestre}`;
+                puesto = ganador.puesto || ganador.lugar || null;
+                break;
+              }
+            }
+          }
+
+          return {
+            idProyecto: proyecto.idProyecto,
+            nombre: proyecto.nombre,
+            descripcion: proyecto.descripcion,
+            materia: proyecto.grupoMateria?.materia?.nombre || "Sin materia",
+            grupo: proyecto.grupoMateria?.grupo?.sigla || "Sin grupo",
+            urlLogo,
+            estaAprobado: proyecto.estaAprobado,
+            esFinal: proyecto.esFinal,
+            fechaCreacion: proyecto.fechaCreacion,
+            feriaGanadora,
+            puesto,
+          };
+        })
+      );
+
+      return proyectosFormateados;
+    } catch (error) {
+      console.error("Error en obtenerProyectosGanadores:", error);
+      throw error;
+    }
+  },
 };
 
 module.exports = proyectoService;
