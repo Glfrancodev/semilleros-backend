@@ -132,6 +132,34 @@ const proyectoService = {
         console.log(`No se encontró banner para proyecto ${idProyecto}`);
       }
 
+      // Obtener el estado de la feria del proyecto
+      let estadoFeria = null;
+      try {
+        const revision = await Revision.findOne({
+          where: { idProyecto },
+          include: [
+            {
+              model: Tarea,
+              as: "tarea",
+              where: { orden: 0 }, // Tarea inicial
+              include: [
+                {
+                  model: db.Feria,
+                  as: "feria",
+                  attributes: ["estado"],
+                },
+              ],
+            },
+          ],
+        });
+
+        if (revision && revision.tarea && revision.tarea.feria) {
+          estadoFeria = revision.tarea.feria.estado;
+        }
+      } catch (error) {
+        console.log(`No se pudo determinar el estado de la feria para proyecto ${idProyecto}`);
+      }
+
       // Formatear respuesta
       const proyectoFormateado = {
         idProyecto: proyecto.idProyecto,
@@ -151,6 +179,7 @@ const proyectoService = {
         urlLogo: urlLogo,
         urlTriptico: urlTriptico,
         urlBanner: urlBanner,
+        estadoFeria: estadoFeria, // Nuevo campo
       };
 
       return proyectoFormateado;
