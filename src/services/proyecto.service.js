@@ -353,6 +353,302 @@ const proyectoService = {
   },
 
   /**
+   * Obtener proyectos actuales del estudiante (vinculados a feria activa)
+   * Solo proyectos donde el estudiante es líder y que tienen revisión de tarea 0 en feria activa
+   */
+  async obtenerMisProyectosActuales(idUsuario) {
+    try {
+      // Obtener el estudiante del usuario
+      const estudiante = await db.Estudiante.findOne({
+        where: { idUsuario },
+      });
+
+      if (!estudiante) {
+        throw new Error("Estudiante no encontrado");
+      }
+
+      // Obtener la feria activa
+      const feriaActiva = await db.Feria.findOne({
+        where: { estado: "Activo" },
+      });
+
+      if (!feriaActiva) {
+        // Si no hay feria activa, retornar array vacío
+        return [];
+      }
+
+      // Obtener proyectos del estudiante que tienen revisión en tarea 0 de la feria activa
+      const { QueryTypes } = require("sequelize");
+      const proyectosActivos = await db.sequelize.query(
+        `
+        SELECT DISTINCT p."idProyecto"
+        FROM "Proyecto" p
+        INNER JOIN "EstudianteProyecto" ep ON ep."idProyecto" = p."idProyecto"
+        INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+        INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+        WHERE ep."idEstudiante" = :idEstudiante
+          AND ep."invitacion" = true
+          AND ep."esLider" = true
+          AND t."idFeria" = :idFeria
+          AND t."orden" = 0
+        `,
+        {
+          replacements: {
+            idEstudiante: estudiante.idEstudiante,
+            idFeria: feriaActiva.idFeria,
+          },
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      const idsProyectosActivos = proyectosActivos.map((p) => p.idProyecto);
+
+      if (idsProyectosActivos.length === 0) {
+        return [];
+      }
+
+      // Obtener los proyectos completos
+      const estudianteProyectos = await EstudianteProyecto.findAll({
+        where: {
+          idEstudiante: estudiante.idEstudiante,
+          invitacion: true,
+          esLider: true,
+        },
+        include: [
+          {
+            model: Proyecto,
+            as: "proyecto",
+            where: {
+              idProyecto: idsProyectosActivos,
+            },
+            include: [
+              {
+                model: GrupoMateria,
+                as: "grupoMateria",
+                include: [
+                  {
+                    model: db.Materia,
+                    as: "materia",
+                    attributes: ["nombre"],
+                  },
+                  {
+                    model: db.Grupo,
+                    as: "grupo",
+                    attributes: ["sigla"],
+                  },
+                  {
+                    model: db.Docente,
+                    as: "docente",
+                    include: [
+                      {
+                        model: db.Usuario,
+                        as: "usuario",
+                        attributes: ["nombre", "apellido"],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      // Mapear los datos a formato simplificado
+      const proyectosFormateados = await Promise.all(
+        estudianteProyectos.map(async (ep) => {
+          const proyecto = ep.proyecto;
+          const grupoMateria = proyecto.grupoMateria;
+
+          // Obtener logo del proyecto (si existe)
+          let urlLogo = null;
+          try {
+            const logo = await archivoService.obtenerArchivoPorTipo(
+              proyecto.idProyecto,
+              "logo"
+            );
+            urlLogo = logo ? logo.urlFirmada : null;
+          } catch (error) {
+            console.log(
+              `No se encontró logo para proyecto ${proyecto.idProyecto}`
+            );
+          }
+
+          return {
+            idProyecto: proyecto.idProyecto,
+            nombre: proyecto.nombre,
+            descripcion: proyecto.descripcion,
+            materia: grupoMateria?.materia?.nombre || "Sin materia",
+            grupo: grupoMateria?.grupo?.sigla || "Sin grupo",
+            nombreDocente: grupoMateria?.docente?.usuario
+              ? `${grupoMateria.docente.usuario.nombre} ${grupoMateria.docente.usuario.apellido}`
+              : "Sin docente",
+            urlLogo: urlLogo,
+            estaAprobado: proyecto.estaAprobado,
+            esFinal: proyecto.esFinal,
+            esPublico: proyecto.esPublico,
+            fechaCreacion: proyecto.fechaCreacion,
+          };
+        })
+      );
+
+      return proyectosFormateados;
+    } catch (error) {
+      console.error("Error en obtenerMisProyectosActuales:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener proyectos pasados del estudiante (todos menos los de feria activa)
+   * Solo proyectos donde el estudiante es líder, excluyendo los que tienen revisión en feria activa
+   */
+  async obtenerMisProyectosPasados(idUsuario) {
+    try {
+      // Obtener el estudiante del usuario
+      const estudiante = await db.Estudiante.findOne({
+        where: { idUsuario },
+      });
+
+      if (!estudiante) {
+        throw new Error("Estudiante no encontrado");
+      }
+
+      // Obtener la feria activa
+      const feriaActiva = await db.Feria.findOne({
+        where: { estado: "Activo" },
+      });
+
+      let idsProyectosActivos = [];
+
+      if (feriaActiva) {
+        // Si hay feria activa, obtener los IDs de proyectos activos
+        const { QueryTypes } = require("sequelize");
+        const proyectosActivos = await db.sequelize.query(
+          `
+          SELECT DISTINCT p."idProyecto"
+          FROM "Proyecto" p
+          INNER JOIN "EstudianteProyecto" ep ON ep."idProyecto" = p."idProyecto"
+          INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+          INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+          WHERE ep."idEstudiante" = :idEstudiante
+            AND ep."invitacion" = true
+            AND ep."esLider" = true
+            AND t."idFeria" = :idFeria
+            AND t."orden" = 0
+          `,
+          {
+            replacements: {
+              idEstudiante: estudiante.idEstudiante,
+              idFeria: feriaActiva.idFeria,
+            },
+            type: QueryTypes.SELECT,
+          }
+        );
+
+        idsProyectosActivos = proyectosActivos.map((p) => p.idProyecto);
+      }
+
+      // Obtener todos los proyectos del estudiante excluyendo los activos
+      const whereClause = {
+        idEstudiante: estudiante.idEstudiante,
+        invitacion: true,
+        esLider: true,
+      };
+
+      const estudianteProyectos = await EstudianteProyecto.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: Proyecto,
+            as: "proyecto",
+            where:
+              idsProyectosActivos.length > 0
+                ? {
+                    idProyecto: {
+                      [db.Sequelize.Op.notIn]: idsProyectosActivos,
+                    },
+                  }
+                : {},
+            include: [
+              {
+                model: GrupoMateria,
+                as: "grupoMateria",
+                include: [
+                  {
+                    model: db.Materia,
+                    as: "materia",
+                    attributes: ["nombre"],
+                  },
+                  {
+                    model: db.Grupo,
+                    as: "grupo",
+                    attributes: ["sigla"],
+                  },
+                  {
+                    model: db.Docente,
+                    as: "docente",
+                    include: [
+                      {
+                        model: db.Usuario,
+                        as: "usuario",
+                        attributes: ["nombre", "apellido"],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      // Mapear los datos a formato simplificado
+      const proyectosFormateados = await Promise.all(
+        estudianteProyectos.map(async (ep) => {
+          const proyecto = ep.proyecto;
+          const grupoMateria = proyecto.grupoMateria;
+
+          // Obtener logo del proyecto (si existe)
+          let urlLogo = null;
+          try {
+            const logo = await archivoService.obtenerArchivoPorTipo(
+              proyecto.idProyecto,
+              "logo"
+            );
+            urlLogo = logo ? logo.urlFirmada : null;
+          } catch (error) {
+            console.log(
+              `No se encontró logo para proyecto ${proyecto.idProyecto}`
+            );
+          }
+
+          return {
+            idProyecto: proyecto.idProyecto,
+            nombre: proyecto.nombre,
+            descripcion: proyecto.descripcion,
+            materia: grupoMateria?.materia?.nombre || "Sin materia",
+            grupo: grupoMateria?.grupo?.sigla || "Sin grupo",
+            nombreDocente: grupoMateria?.docente?.usuario
+              ? `${grupoMateria.docente.usuario.nombre} ${grupoMateria.docente.usuario.apellido}`
+              : "Sin docente",
+            urlLogo: urlLogo,
+            estaAprobado: proyecto.estaAprobado,
+            esFinal: proyecto.esFinal,
+            esPublico: proyecto.esPublico,
+            fechaCreacion: proyecto.fechaCreacion,
+          };
+        })
+      );
+
+      return proyectosFormateados;
+    } catch (error) {
+      console.error("Error en obtenerMisProyectosPasados:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Obtener convocatoria de un proyecto mediante revisiones
    */
   async obtenerConvocatoriaDeProyecto(idProyecto) {
@@ -677,6 +973,300 @@ const proyectoService = {
       return proyectosFormateados;
     } catch (error) {
       console.error("Error en obtenerProyectosConInvitacionPendiente:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener proyectos invitados actuales (vinculados a feria activa)
+   * Solo proyectos donde el estudiante NO es líder, tiene invitación aceptada y pertenecen a feria activa
+   */
+  async obtenerProyectosInvitadosActuales(idUsuario) {
+    try {
+      // Obtener el estudiante del usuario
+      const estudiante = await db.Estudiante.findOne({
+        where: { idUsuario },
+      });
+
+      if (!estudiante) {
+        throw new Error("Estudiante no encontrado");
+      }
+
+      // Obtener la feria activa
+      const feriaActiva = await db.Feria.findOne({
+        where: { estado: "Activo" },
+      });
+
+      if (!feriaActiva) {
+        // Si no hay feria activa, retornar array vacío
+        return [];
+      }
+
+      // Obtener proyectos invitados que tienen revisión en tarea 0 de la feria activa
+      const { QueryTypes } = require("sequelize");
+      const proyectosActivos = await db.sequelize.query(
+        `
+        SELECT DISTINCT p."idProyecto"
+        FROM "Proyecto" p
+        INNER JOIN "EstudianteProyecto" ep ON ep."idProyecto" = p."idProyecto"
+        INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+        INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+        WHERE ep."idEstudiante" = :idEstudiante
+          AND ep."invitacion" = true
+          AND ep."esLider" = false
+          AND t."idFeria" = :idFeria
+          AND t."orden" = 0
+        `,
+        {
+          replacements: {
+            idEstudiante: estudiante.idEstudiante,
+            idFeria: feriaActiva.idFeria,
+          },
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      const idsProyectosActivos = proyectosActivos.map((p) => p.idProyecto);
+
+      if (idsProyectosActivos.length === 0) {
+        return [];
+      }
+
+      // Obtener los proyectos completos
+      const estudianteProyectos = await EstudianteProyecto.findAll({
+        where: {
+          idEstudiante: estudiante.idEstudiante,
+          invitacion: true,
+          esLider: false,
+        },
+        include: [
+          {
+            model: Proyecto,
+            as: "proyecto",
+            where: {
+              idProyecto: idsProyectosActivos,
+            },
+            include: [
+              {
+                model: GrupoMateria,
+                as: "grupoMateria",
+                include: [
+                  {
+                    model: db.Materia,
+                    as: "materia",
+                    attributes: ["nombre"],
+                  },
+                  {
+                    model: db.Grupo,
+                    as: "grupo",
+                    attributes: ["sigla"],
+                  },
+                  {
+                    model: db.Docente,
+                    as: "docente",
+                    include: [
+                      {
+                        model: db.Usuario,
+                        as: "usuario",
+                        attributes: ["nombre", "apellido"],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      // Mapear los datos a formato simplificado
+      const proyectosFormateados = await Promise.all(
+        estudianteProyectos.map(async (ep) => {
+          const proyecto = ep.proyecto;
+          const grupoMateria = proyecto.grupoMateria;
+
+          // Obtener logo del proyecto (si existe)
+          let urlLogo = null;
+          try {
+            const logo = await archivoService.obtenerArchivoPorTipo(
+              proyecto.idProyecto,
+              "logo"
+            );
+            urlLogo = logo ? logo.urlFirmada : null;
+          } catch (error) {
+            console.log(
+              `No se encontró logo para proyecto ${proyecto.idProyecto}`
+            );
+          }
+
+          return {
+            idProyecto: proyecto.idProyecto,
+            nombre: proyecto.nombre,
+            descripcion: proyecto.descripcion,
+            urlLogo,
+            materia: grupoMateria?.materia?.nombre || "Sin materia",
+            grupo: grupoMateria?.grupo?.sigla || "Sin grupo",
+            nombreDocente: grupoMateria?.docente?.usuario
+              ? `${grupoMateria.docente.usuario.nombre} ${grupoMateria.docente.usuario.apellido}`
+              : "Sin docente",
+            estaAprobado: proyecto.estaAprobado,
+            esFinal: proyecto.esFinal,
+            fechaCreacion: proyecto.fechaCreacion,
+          };
+        })
+      );
+
+      return proyectosFormateados;
+    } catch (error) {
+      console.error("Error en obtenerProyectosInvitadosActuales:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtener proyectos invitados pasados (todos menos los de feria activa)
+   * Solo proyectos donde el estudiante NO es líder, tiene invitación aceptada, excluyendo feria activa
+   */
+  async obtenerProyectosInvitadosPasados(idUsuario) {
+    try {
+      // Obtener el estudiante del usuario
+      const estudiante = await db.Estudiante.findOne({
+        where: { idUsuario },
+      });
+
+      if (!estudiante) {
+        throw new Error("Estudiante no encontrado");
+      }
+
+      // Obtener la feria activa
+      const feriaActiva = await db.Feria.findOne({
+        where: { estado: "Activo" },
+      });
+
+      let idsProyectosActivos = [];
+
+      if (feriaActiva) {
+        // Si hay feria activa, obtener los IDs de proyectos activos
+        const { QueryTypes } = require("sequelize");
+        const proyectosActivos = await db.sequelize.query(
+          `
+          SELECT DISTINCT p."idProyecto"
+          FROM "Proyecto" p
+          INNER JOIN "EstudianteProyecto" ep ON ep."idProyecto" = p."idProyecto"
+          INNER JOIN "Revision" r ON r."idProyecto" = p."idProyecto"
+          INNER JOIN "Tarea" t ON t."idTarea" = r."idTarea"
+          WHERE ep."idEstudiante" = :idEstudiante
+            AND ep."invitacion" = true
+            AND ep."esLider" = false
+            AND t."idFeria" = :idFeria
+            AND t."orden" = 0
+          `,
+          {
+            replacements: {
+              idEstudiante: estudiante.idEstudiante,
+              idFeria: feriaActiva.idFeria,
+            },
+            type: QueryTypes.SELECT,
+          }
+        );
+
+        idsProyectosActivos = proyectosActivos.map((p) => p.idProyecto);
+      }
+
+      // Obtener todos los proyectos invitados excluyendo los activos
+      const whereClause = {
+        idEstudiante: estudiante.idEstudiante,
+        invitacion: true,
+        esLider: false,
+      };
+
+      const estudianteProyectos = await EstudianteProyecto.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: Proyecto,
+            as: "proyecto",
+            where:
+              idsProyectosActivos.length > 0
+                ? {
+                    idProyecto: {
+                      [db.Sequelize.Op.notIn]: idsProyectosActivos,
+                    },
+                  }
+                : {},
+            include: [
+              {
+                model: GrupoMateria,
+                as: "grupoMateria",
+                include: [
+                  {
+                    model: db.Materia,
+                    as: "materia",
+                    attributes: ["nombre"],
+                  },
+                  {
+                    model: db.Grupo,
+                    as: "grupo",
+                    attributes: ["sigla"],
+                  },
+                  {
+                    model: db.Docente,
+                    as: "docente",
+                    include: [
+                      {
+                        model: db.Usuario,
+                        as: "usuario",
+                        attributes: ["nombre", "apellido"],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      // Mapear los datos a formato simplificado
+      const proyectosFormateados = await Promise.all(
+        estudianteProyectos.map(async (ep) => {
+          const proyecto = ep.proyecto;
+          const grupoMateria = proyecto.grupoMateria;
+
+          // Obtener logo del proyecto (si existe)
+          let urlLogo = null;
+          try {
+            const logo = await archivoService.obtenerArchivoPorTipo(
+              proyecto.idProyecto,
+              "logo"
+            );
+            urlLogo = logo ? logo.urlFirmada : null;
+          } catch (error) {
+            console.log(
+              `No se encontró logo para proyecto ${proyecto.idProyecto}`
+            );
+          }
+
+          return {
+            idProyecto: proyecto.idProyecto,
+            nombre: proyecto.nombre,
+            descripcion: proyecto.descripcion,
+            urlLogo,
+            materia: grupoMateria?.materia?.nombre || "Sin materia",
+            grupo: grupoMateria?.grupo?.sigla || "Sin grupo",
+            nombreDocente: grupoMateria?.docente?.usuario
+              ? `${grupoMateria.docente.usuario.nombre} ${grupoMateria.docente.usuario.apellido}`
+              : "Sin docente",
+            estaAprobado: proyecto.estaAprobado,
+            esFinal: proyecto.esFinal,
+            fechaCreacion: proyecto.fechaCreacion,
+          };
+        })
+      );
+
+      return proyectosFormateados;
+    } catch (error) {
+      console.error("Error en obtenerProyectosInvitadosPasados:", error);
       throw error;
     }
   },

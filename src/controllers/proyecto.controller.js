@@ -474,6 +474,146 @@ const proyectoController = {
       });
     }
   },
+
+  /**
+   * GET /api/proyectos/mis-proyectos-actuales
+   * Obtener proyectos actuales del estudiante (vinculados a feria activa)
+   */
+  async obtenerMisProyectosActuales(req, res) {
+    try {
+      const idUsuario = req.user.idUsuario;
+      const proyectos = await proyectoService.obtenerMisProyectosActuales(
+        idUsuario
+      );
+      return res.success("Proyectos actuales obtenidos exitosamente", {
+        count: proyectos.length,
+        items: proyectos,
+      });
+    } catch (error) {
+      console.error("Error al obtener proyectos actuales:", error);
+
+      if (error.message === "Estudiante no encontrado") {
+        return res.error(
+          "No se encontró un estudiante asociado a este usuario",
+          404,
+          {
+            code: "STUDENT_NOT_FOUND",
+            details: error.message,
+          }
+        );
+      }
+
+      return res.error("Error al obtener los proyectos actuales", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/proyectos/mis-proyectos-pasados
+   * Obtener proyectos pasados del estudiante (todos menos los de feria activa)
+   */
+  async obtenerMisProyectosPasados(req, res) {
+    try {
+      const idUsuario = req.user.idUsuario;
+      const proyectos = await proyectoService.obtenerMisProyectosPasados(
+        idUsuario
+      );
+      return res.success("Proyectos pasados obtenidos exitosamente", {
+        count: proyectos.length,
+        items: proyectos,
+      });
+    } catch (error) {
+      console.error("Error al obtener proyectos pasados:", error);
+
+      if (error.message === "Estudiante no encontrado") {
+        return res.error(
+          "No se encontró un estudiante asociado a este usuario",
+          404,
+          {
+            code: "STUDENT_NOT_FOUND",
+            details: error.message,
+          }
+        );
+      }
+
+      return res.error("Error al obtener los proyectos pasados", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/proyectos/mis-proyectos-invitados-actuales
+   * Obtener proyectos invitados actuales del estudiante (vinculados a feria activa)
+   */
+  async obtenerMisProyectosInvitadosActuales(req, res) {
+    try {
+      const idUsuario = req.user.idUsuario;
+      const proyectos = await proyectoService.obtenerProyectosInvitadosActuales(
+        idUsuario
+      );
+      return res.success("Proyectos invitados actuales obtenidos exitosamente", {
+        count: proyectos.length,
+        items: proyectos,
+      });
+    } catch (error) {
+      console.error("Error al obtener proyectos invitados actuales:", error);
+
+      if (error.message === "Estudiante no encontrado") {
+        return res.error(
+          "No se encontró un estudiante asociado a este usuario",
+          404,
+          {
+            code: "STUDENT_NOT_FOUND",
+            details: error.message,
+          }
+        );
+      }
+
+      return res.error("Error al obtener los proyectos invitados actuales", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/proyectos/mis-proyectos-invitados-pasados
+   * Obtener proyectos invitados pasados del estudiante (todos menos los de feria activa)
+   */
+  async obtenerMisProyectosInvitadosPasados(req, res) {
+    try {
+      const idUsuario = req.user.idUsuario;
+      const proyectos = await proyectoService.obtenerProyectosInvitadosPasados(
+        idUsuario
+      );
+      return res.success("Proyectos invitados pasados obtenidos exitosamente", {
+        count: proyectos.length,
+        items: proyectos,
+      });
+    } catch (error) {
+      console.error("Error al obtener proyectos invitados pasados:", error);
+
+      if (error.message === "Estudiante no encontrado") {
+        return res.error(
+          "No se encontró un estudiante asociado a este usuario",
+          404,
+          {
+            code: "STUDENT_NOT_FOUND",
+            details: error.message,
+          }
+        );
+      }
+
+      return res.error("Error al obtener los proyectos invitados pasados", 500, {
+        code: "FETCH_ERROR",
+        details: error.message,
+      });
+    }
+  },
 };
 
 module.exports = proyectoController;

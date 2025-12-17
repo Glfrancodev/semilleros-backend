@@ -28,6 +28,34 @@ router.get(
   proyectoController.obtenerMisProyectosInvitados
 );
 
+// GET /api/proyectos/mis-proyectos-actuales - Obtener proyectos actuales (vinculados a feria activa)
+router.get(
+  "/mis-proyectos-actuales",
+  validarToken,
+  proyectoController.obtenerMisProyectosActuales
+);
+
+// GET /api/proyectos/mis-proyectos-pasados - Obtener proyectos pasados (todos menos feria activa)
+router.get(
+  "/mis-proyectos-pasados",
+  validarToken,
+  proyectoController.obtenerMisProyectosPasados
+);
+
+// GET /api/proyectos/mis-proyectos-invitados-actuales - Obtener proyectos invitados actuales (vinculados a feria activa)
+router.get(
+  "/mis-proyectos-invitados-actuales",
+  validarToken,
+  proyectoController.obtenerMisProyectosInvitadosActuales
+);
+
+// GET /api/proyectos/mis-proyectos-invitados-pasados - Obtener proyectos invitados pasados (todos menos feria activa)
+router.get(
+  "/mis-proyectos-invitados-pasados",
+  validarToken,
+  proyectoController.obtenerMisProyectosInvitadosPasados
+);
+
 // GET /api/proyectos/aprobados-feria - Obtener proyectos aprobados para feria (DEBE IR ANTES de /:idProyecto)
 router.get(
   "/aprobados-feria",
